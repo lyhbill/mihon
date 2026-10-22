@@ -146,7 +146,12 @@ fun CheckboxItem(label: String, pref: Preference<Boolean>) {
 }
 
 @Composable
-fun CheckboxItem(label: String, checked: Boolean, onClick: () -> Unit) {
+fun CheckboxItem(
+    label: String,
+    checked: Boolean,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     BaseSettingsItem(
         label = label,
         widget = {
@@ -156,6 +161,7 @@ fun CheckboxItem(label: String, checked: Boolean, onClick: () -> Unit) {
             )
         },
         onClick = onClick,
+        trailingContent = trailingContent,
     )
 }
 
@@ -437,6 +443,7 @@ private fun BaseSettingsItem(
     label: String,
     widget: @Composable RowScope.() -> Unit,
     onClick: () -> Unit,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -453,6 +460,8 @@ private fun BaseSettingsItem(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
+            modifier = if (trailingContent != null) Modifier.weight(1f) else Modifier,
         )
+        trailingContent?.invoke(this)
     }
 }
