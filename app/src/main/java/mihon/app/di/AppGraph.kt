@@ -26,6 +26,7 @@ import eu.kanade.tachiyomi.data.download.DownloadWorker
 import eu.kanade.tachiyomi.data.library.LibraryUpdateWorker
 import eu.kanade.tachiyomi.data.library.MetadataUpdateWorker
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
+import eu.kanade.tachiyomi.data.preprocessing.PreprocessingManager
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.extension.ExtensionManager
@@ -95,6 +96,8 @@ interface AppGraph : ViewModelGraph {
     val downloadPreferences: DownloadPreferences
 
     val crashLogUtil: CrashLogUtil
+
+    val preprocessingManager: PreprocessingManager
 
     val downloadManager: DownloadManager
 

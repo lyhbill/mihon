@@ -41,6 +41,10 @@ object Notifications {
     const val CHANNEL_DOWNLOADER_ERROR = "downloader_error_channel"
     const val ID_DOWNLOAD_CHAPTER_ERROR = -202
 
+    private const val GROUP_PREPROCESSING = "group_preprocessing"
+    const val CHANNEL_PREPROCESSING_PROGRESS = "preprocessing_progress_channel"
+    const val ID_PREPROCESSING_PROGRESS = -204
+
     /**
      * Notification channel and ids used by the library updater.
      */
@@ -106,6 +110,9 @@ object Notifications {
                 buildNotificationChannelGroup(GROUP_DOWNLOADER) {
                     setName(context.stringResource(MR.strings.download_notifier_downloader_title))
                 },
+                buildNotificationChannelGroup(GROUP_PREPROCESSING) {
+                    setName(context.stringResource(MR.strings.preprocessing))
+                },
                 buildNotificationChannelGroup(GROUP_LIBRARY) {
                     setName(context.stringResource(MR.strings.label_library))
                 },
@@ -141,6 +148,11 @@ object Notifications {
                 buildNotificationChannel(CHANNEL_DOWNLOADER_ERROR, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.channel_errors))
                     setGroup(GROUP_DOWNLOADER)
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_PREPROCESSING_PROGRESS, IMPORTANCE_LOW) {
+                    setName(context.stringResource(MR.strings.channel_progress))
+                    setGroup(GROUP_PREPROCESSING)
                     setShowBadge(false)
                 },
                 buildNotificationChannel(CHANNEL_BACKUP_RESTORE_PROGRESS, IMPORTANCE_LOW) {

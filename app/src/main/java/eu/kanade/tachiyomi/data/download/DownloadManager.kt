@@ -5,9 +5,11 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.data.preprocessing.PreprocessingManager
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.ui.reader.viewer.ChapterPreprocessingArtifacts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -27,6 +29,7 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.chapter.interactor.GetChapter
 import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
@@ -51,6 +54,8 @@ class DownloadManager(
     private val downloadPreferences: DownloadPreferences,
     private val downloader: Downloader,
     private val pendingDeleter: DownloadPendingDeleter,
+    private val chapterRepository: ChapterRepository,
+    private val preprocessingManager: PreprocessingManager,
 ) {
 
     val queueState
@@ -278,6 +283,8 @@ class DownloadManager(
             val (mangaDir, chapterDirs) = provider.findChapterDirs(filteredChapters, manga, source)
             chapterDirs.forEach { it.delete() }
             cache.removeChapters(filteredChapters, manga)
+            preprocessingManager.deleteArtifacts(filteredChapters.map(Chapter::id))
+            ChapterPreprocessingArtifacts.deleteLegacy(context, manga, filteredChapters)
 
             // Delete manga directory if empty
             if (mangaDir?.listFiles()?.isEmpty() == true) {
@@ -300,6 +307,9 @@ class DownloadManager(
             }
             provider.findMangaDir(manga.title, source)?.delete()
             cache.removeManga(manga)
+            val mangaChapters = chapterRepository.getChapterByMangaId(manga.id)
+            preprocessingManager.deleteArtifacts(mangaChapters.map(Chapter::id))
+            ChapterPreprocessingArtifacts.deleteLegacy(context, manga, mangaChapters)
 
             // Delete source directory if empty
             val sourceDir = provider.findSourceDir(source)

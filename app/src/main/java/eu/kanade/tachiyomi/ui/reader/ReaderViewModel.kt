@@ -31,6 +31,7 @@ import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.data.preprocessing.PreprocessingManager
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
@@ -129,6 +130,7 @@ class ReaderViewModel(
     private val coverCache: CoverCache,
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
+    private val preprocessingManager: PreprocessingManager,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -384,6 +386,8 @@ class ReaderViewModel(
         chapter: ReaderChapter,
     ): ViewerChapters {
         loader.loadChapter(chapter)
+
+        manga?.let { preprocessingManager.queueAutomatically(it, chapter.chapter) }
 
         val chapterPos = chapterList.indexOf(chapter)
         val newChapters = ViewerChapters(

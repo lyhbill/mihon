@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.core.app.ActivityCompat
+import androidx.core.view.children
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
@@ -139,6 +140,13 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
         config.imagePropertyChangedListener = {
             recycler.sidePaddingPercent = config.sidePadding
             refreshAdapter()
+        }
+
+        config.textEnhancementChangedListener = { strength ->
+            recycler.children.forEach { child ->
+                (recycler.getChildViewHolder(child) as? WebtoonPageHolder)
+                    ?.updateTextEnhancement(strength)
+            }
         }
 
         config.themeChangedListener = {

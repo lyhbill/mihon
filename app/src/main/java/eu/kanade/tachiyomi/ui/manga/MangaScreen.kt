@@ -116,6 +116,9 @@ class MangaScreen(
             onChapterClicked = { openChapter(context, it) },
             onDownloadChapter = viewModel::runChapterDownloadActions.takeIf { !successState.source.isLocalOrStub() },
             downloadProgressProvider = viewModel::getDownloadProgress,
+            onPreprocessingChapter = viewModel::runChapterPreprocessingAction.takeIf {
+                !successState.source.isLocalOrStub() && successState.preprocessingEnabled
+            },
             onAddToLibraryClicked = {
                 if (successState.manga.favorite) {
                     viewModel.showRemoveFromLibraryDialog()
@@ -152,7 +155,12 @@ class MangaScreen(
             onSearch = { query, global -> scope.launch { performSearch(navigator, query, global) } },
             onCoverClicked = viewModel::showCoverDialog,
             onShareClicked = { shareManga(context, viewModel.manga, viewModel.source) }.takeIf { isHttpSource },
-            onDownloadActionClicked = viewModel::runDownloadAction.takeIf { !successState.source.isLocalOrStub() },
+            onDownloadActionClicked = viewModel::runMangaDownloadAction.takeIf {
+                !successState.source.isLocalOrStub()
+            },
+            onPreprocessingActionClicked = viewModel::runMangaPreprocessingAction.takeIf {
+                !successState.source.isLocalOrStub() && successState.preprocessingEnabled
+            },
             onEditCategoryClicked = viewModel::showChangeCategoryDialog.takeIf { successState.manga.favorite },
             onEditFetchIntervalClicked = viewModel::showSetFetchIntervalDialog.takeIf {
                 successState.manga.favorite

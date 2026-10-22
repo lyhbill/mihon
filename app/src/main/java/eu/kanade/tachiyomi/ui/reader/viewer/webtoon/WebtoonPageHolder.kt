@@ -13,6 +13,8 @@ import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.databinding.ReaderErrorBinding
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import eu.kanade.tachiyomi.ui.reader.setting.ImageProcessing
+import eu.kanade.tachiyomi.ui.reader.viewer.ChapterPreprocessingArtifacts
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderPageImageView
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
@@ -78,6 +80,11 @@ class WebtoonPageHolder(
      */
     private var loadJob: Job? = null
 
+    private var textEnhancementJob: Job? = null
+    private var buildUpdateJob: Job? = null
+    private var hasTextEnhancementMask = false
+    private var textEnhancementSupported = false
+
     init {
         refreshLayoutParams()
 
@@ -90,7 +97,27 @@ class WebtoonPageHolder(
      * Binds the given [page] with this view holder, subscribing to its state.
      */
     fun bind(page: ReaderPage) {
+        if (this.page !== page) {
+            textEnhancementJob?.cancel()
+            textEnhancementJob = null
+            hasTextEnhancementMask = false
+            textEnhancementSupported = false
+            frame.clearTextEnhancementMask()
+        }
         this.page = page
+        buildUpdateJob?.cancel()
+        buildUpdateJob = scope.launch {
+            ChapterPreprocessingArtifacts.pageChanges.collect { change ->
+                if (this@WebtoonPageHolder.page === page &&
+                    change.chapterId == page.chapter.chapter.id &&
+                    change.pageIndex == page.index
+                ) {
+                    textEnhancementJob?.cancel()
+                    textEnhancementJob = null
+                    updateTextEnhancement(viewer.config.textEnhancement)
+                }
+            }
+        }
         loadJob?.cancel()
         loadJob = scope.launch { loadPageAndProcessStatus() }
         refreshLayoutParams()
@@ -113,6 +140,12 @@ class WebtoonPageHolder(
     override fun recycle() {
         loadJob?.cancel()
         loadJob = null
+        textEnhancementJob?.cancel()
+        textEnhancementJob = null
+        buildUpdateJob?.cancel()
+        buildUpdateJob = null
+        hasTextEnhancementMask = false
+        textEnhancementSupported = false
 
         removeErrorLayout()
         frame.recycle()
@@ -204,6 +237,8 @@ class WebtoonPageHolder(
                         cropBorders = viewer.config.imageCropBorders,
                     ),
                 )
+                textEnhancementSupported = !isAnimated
+                updateTextEnhancement(viewer.config.textEnhancement)
                 removeErrorLayout()
             }
         } catch (e: Throwable) {
@@ -237,6 +272,47 @@ class WebtoonPageHolder(
             ImageUtil.rotateImage(imageSource, rotation)
         } else {
             imageSource
+        }
+    }
+
+    fun updateTextEnhancement(strength: Int) {
+        frame.setTextEnhancementStrength(strength)
+        if (strength <= ImageProcessing.TEXT_ENHANCEMENT_MIN) {
+            textEnhancementJob?.cancel()
+            textEnhancementJob = null
+            hasTextEnhancementMask = false
+            frame.clearTextEnhancementMask()
+            return
+        }
+        if (!textEnhancementSupported) {
+            return
+        }
+        // The masked overlay is only wired into the ink subsampling path; the webtoon strip view
+        // has no bitmap hook yet, so skip decoding masks it would immediately recycle.
+        if (!frame.supportsTextEnhancementMask) {
+            return
+        }
+        if (hasTextEnhancementMask || textEnhancementJob?.isActive == true) {
+            return
+        }
+
+        val targetPage = page ?: run {
+            return
+        }
+        textEnhancementJob = scope.launch {
+            val mask = withContext(Dispatchers.IO) {
+                ChapterPreprocessingArtifacts.loadPage(context, targetPage.chapter.chapter.id, targetPage.index)
+            }
+            if (mask == null) return@launch
+            if (
+                page !== targetPage ||
+                viewer.config.textEnhancement <= ImageProcessing.TEXT_ENHANCEMENT_MIN
+            ) {
+                mask.recycle()
+                return@launch
+            }
+            hasTextEnhancementMask = true
+            frame.setTextEnhancementMask(mask, viewer.config.textEnhancement)
         }
     }
 
