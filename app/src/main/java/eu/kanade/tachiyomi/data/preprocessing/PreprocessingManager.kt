@@ -92,12 +92,13 @@ class PreprocessingManager(
             _taskEvents.tryEmit(it)
         }
         val existingIds = queueState.value.mapTo(mutableSetOf()) { it.chapter.id }
-        val tasks = chapters.asSequence()
+        // List.filter is inline, so the suspend lookups below are legal here;
+        // Sequence operators are not inline and would reject suspend calls.
+        val tasks = chapters
             .filterNot { it.id in existingIds || ChapterPreprocessingArtifacts.isGenerated(context, it.id) }
             .filter { chapter -> findDownloadedChapter(source, manga, chapter) != null }
             .sortedByDescending(Chapter::sourceOrder)
             .map { PreprocessingTask(source, manga, it) }
-            .toList()
         if (tasks.isNotEmpty()) {
             _queueState.update { it + tasks }
             store.addAll(tasks)

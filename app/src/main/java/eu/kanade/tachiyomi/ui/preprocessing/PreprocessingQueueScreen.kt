@@ -80,7 +80,7 @@ data object PreprocessingQueueScreen : Screen() {
                         icon = {
                             Icon(
                                 imageVector = if (isRunning) {
-                                    MaterialSymbols.Rounded.Pause
+                                    MaterialSymbols.RoundedFilled.Pause
                                 } else {
                                     MaterialSymbols.RoundedFilled.PlayArrow
                                 },
