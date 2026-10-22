@@ -1,0 +1,199 @@
+# =============================================================================
+# Mihon x SmartOS 移植分支（port/smartos）专用 CI
+# -----------------------------------------------------------------------------
+# 用途：只做「能编译 + 能出可安装 APK」的快速验证，不做发布、不碰正式签名。
+#   1) 先跑 assembleRelease —— 移植代码的 API 不匹配/编译错误在这里最快暴露；
+#   2) 单测与 SQLDelight 迁移校验只产出报告，continue-on-error，不阻塞出包；
+#   3) 上传 APK 与单测报告，供本机无 JDK/Android SDK 的开发者下载验证。
+#
+# 本文件为新增文件，不覆盖上游已有的 .github/workflows/{build,release,update_website}.yml。
+#
+# SDK / 工具链版本来源：
+#   gradle/mihon.versions.toml
+#     android-sdk-compile = "37.2"         -> platforms;android-37.2（minor SDK，需 AGP 9.x 支持）
+#     android-sdk-target  = "36"
+#     android-ndk         = "29.0.14206865" -> ndk;29.0.14206865（build-logic 对每个 android 模块设了 ndkVersion）
+#     java                = "17"           -> 仅 source/target 兼容级别（tapmoc configureJavaCompatibility），
+#                                             构建 JVM 用 JDK 21（与上游 .github/.java-version 一致）
+#   gradle/wrapper/gradle-wrapper.properties -> Gradle 9.8.1
+#   gradle/libs.versions.toml               -> AGP 9.4.1
+#   build-tools：仓库未显式指定 buildToolsVersion，由 AGP 9.4.1 自行选择默认版本
+#                （37.0.0 是否存在取决于 SDK 仓库，见安装步骤里的注释）。
+#
+# 签名说明（重要）：
+#   app/build.gradle.kts 中 release 变体固定 signingConfig = debug.signingConfig；
+#   只有当环境变量 MIHON_GITHUB_RELEASE=true 时才会去读
+#   storeFile / storePassword / keyAlias / keyPassword 这些 secrets。
+#   本流水线**故意不设置** MIHON_GITHUB_RELEASE，也不放 keystore.properties，
+#   因此产出的是「debug 签名的 release 包」：可直接安装，无需任何 secrets。
+#   注意其签名与官方 Mihon 不同，不能覆盖安装官方包；applicationId 保持 app.mihon。
+# =============================================================================
+
+name: Port Build (SmartOS)
+
+on:
+  # 任意分支的 push 都触发（移植分支开发用）
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支 / 同一 PR 只保留最新一次运行，避免排队浪费 runner
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Test (port/smartos)
+    # 与上游 .github/workflows/build.yml 保持一致
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # 浅克隆仓库（本仓库只有少量提交）也能工作。
+          # 注意：上游 build.gradle.kts 用 `git rev-list --count HEAD` 生成 COMMIT_COUNT，
+          # 浅克隆下只会得到 1（只影响 BuildConfig.COMMIT_COUNT 与 unstable 变体的
+          # versionName 后缀，不影响 release 的 versionCode=38 / versionName=0.21.2）。
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # 具体组件在下一步显式安装，便于逐个定位失败原因；
+          # 这一步只负责铺设 cmdline-tools 并记录许可。
+          log-accepted-android-sdk-licenses: true
+
+      - name: Install Android SDK components
+        # 显式安装是为了「缺组件立刻可见」。但 AGP 9.4.1 本身也能自动下载缺失组件，
+        # 所以单个组件安装失败只告警、不中止，让后面的编译步骤给出真正的错误。
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          echo "sdkmanager: $SDKMANAGER"
+          echo "ANDROID_HOME=${ANDROID_HOME:-<unset>} ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
+          "$SDKMANAGER" --version || true
+
+          # 显式接受所有许可；否则 AGP 自动下载组件时会失败在 "licenses not accepted"。
+          # 用 timeout 兜底：万一 sdkmanager 不主动退出，避免流水线卡到 120 分钟上限。
+          timeout 600 bash -c "yes | \"$SDKMANAGER\" --licenses" > /dev/null 2>&1 \
+            || echo "::warning::sdkmanager --licenses 退出码非 0（许可可能已接受，通常可忽略）"
+
+          # 单个组件安装：先稳定通道，再 canary 通道（minor SDK / 新 build-tools 往往只在 canary 出现）
+          install_component() {
+            local pkg="$1"
+            local log="/tmp/sdkmanager-install.log"
+            local channel
+            for channel in "" "--channel=3"; do
+              # shellcheck disable=SC2086
+              if "$SDKMANAGER" --install "$pkg" $channel > "$log" 2>&1; then
+                echo "installed: $pkg ${channel:-(stable channel)}"
+                return 0
+              fi
+            done
+            echo "::warning::sdkmanager 安装 '$pkg' 失败（stable + canary 均失败），交由 AGP 9.4.1 在构建时自动下载；日志末尾："
+            tail -n 15 "$log" || true
+            return 1
+          }
+
+          # 硬依赖：compileSdk 37.2 -> platforms;android-37.2（minor SDK 版本）
+          install_component "platforms;android-37.2" || true
+          install_component "platform-tools" || true
+
+          # build-logic 给所有 android 模块设了 ndkVersion = 29.0.14206865；
+          # 当前 app 没有 native 源码（没有 externalNativeBuild），NDK 只是声明层面需要，
+          # 显式装是为了「缺组件立刻可见」，失败不致命。
+          install_component "ndk;29.0.14206865" || true
+
+          # build-tools：仓库没有显式 buildToolsVersion，AGP 9.4.1 会自行选择默认版本。
+          # 这里只「尝试」build-tools;37.0.0 —— 该版本在当前 SDK 仓库中很可能尚不存在，
+          # 不存在时**不需要**手动指定，省略即可让 AGP 自己挑（sdkmanager 也没有
+          # build-tools;latest 这种别名，所以不做 fallback 安装）。
+          install_component "build-tools;37.0.0" || true
+
+          echo "--- platforms ---"
+          ls "${ANDROID_HOME}/platforms" 2>/dev/null || true
+          echo "--- build-tools ---"
+          ls "${ANDROID_HOME}/build-tools" 2>/dev/null || true
+          echo "--- ndk ---"
+          ls "${ANDROID_HOME}/ndk" 2>/dev/null || true
+          echo "--- 仓库中可见的 platform 包（诊断用） ---"
+          "$SDKMANAGER" --channel=3 --list 2>/dev/null | grep -E "platforms;android-3[6-9]" | sort -u || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # 分支/PR 间共享 Gradle 缓存（含 wrapper 发行版与构建缓存）。
+          # 上游用 v6 + cache-encryption-key secret；此处不引入 secret，保持 fork 可直接跑。
+          cache-read-only: false
+          gradle-home-cache-cleanup: true
+
+      - name: Assemble release APK
+        id: build
+        # 先编译：移植代码的签名/API 不匹配会在这里最快暴露。
+        # -Pdist=ci -> includeTelemetry=true（仓库已跟踪 app/google-services.json，无需 secrets）
+        #            -> enableUpdater=true
+        #            且不触发 MIHON_GITHUB_RELEASE 分支（= 使用 debug 签名）
+        run: ./gradlew --no-daemon assembleRelease -Pdist=ci
+
+      - name: Run unit tests
+        id: unit_tests
+        # 单测失败不阻塞出包，但会在 summary 与报告 artifact 里可见
+        continue-on-error: true
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Verify SQLDelight migrations
+        id: sqldelight
+        continue-on-error: true
+        run: ./gradlew --no-daemon verifySqlDelightMigration
+
+      - name: Upload release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: mihon-smartos-apk
+          # ABI splits + universal APK（app/build.gradle.kts 里 splits.abi 开启）
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload unit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mihon-smartos-unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Port build (SmartOS) summary"
+            echo ""
+            echo "| step | outcome |"
+            echo "| --- | --- |"
+            echo "| assembleRelease | ${{ steps.build.outcome }} |"
+            echo "| testDebugUnitTest | ${{ steps.unit_tests.outcome }} |"
+            echo "| verifySqlDelightMigration | ${{ steps.sqldelight.outcome }} |"
+            echo ""
+            echo "签名：debug（未设置 MIHON_GITHUB_RELEASE），可安装但不可覆盖官方包。"
+          } >> "$GITHUB_STEP_SUMMARY"
