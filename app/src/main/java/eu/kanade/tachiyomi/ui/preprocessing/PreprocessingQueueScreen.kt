@@ -35,7 +35,7 @@ import eu.kanade.tachiyomi.data.preprocessing.model.PreprocessingTask
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.rounded.Error
-import mihon.icons.materialsymbols.rounded.Pause
+import mihon.icons.materialsymbols.roundedfilled.Pause
 import mihon.icons.materialsymbols.rounded.RocketLaunch
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.i18n.MR

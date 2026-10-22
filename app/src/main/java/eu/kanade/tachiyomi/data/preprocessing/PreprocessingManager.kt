@@ -311,7 +311,7 @@ class PreprocessingManager(
         _taskEvents.emit(task)
     }
 
-    private fun findDownloadedChapter(source: HttpSource, manga: Manga, chapter: Chapter) =
+    private suspend fun findDownloadedChapter(source: HttpSource, manga: Manga, chapter: Chapter) =
         provider.findChapterDir(
             chapter.name,
             chapter.scanlator,

@@ -12,6 +12,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import eu.kanade.tachiyomi.R
+import mihon.icons.materialsymbols.MaterialSymbolsR
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
@@ -29,7 +30,7 @@ class PreprocessingJob(context: Context, workerParams: WorkerParameters) : Corou
         val notification = applicationContext.notificationBuilder(Notifications.CHANNEL_PREPROCESSING_PROGRESS) {
             setContentTitle(applicationContext.stringResource(MR.strings.preprocessing))
             setContentText(applicationContext.stringResource(MR.strings.preprocessing_notification_summary))
-            setSmallIcon(R.drawable.ic_book_24dp)
+            setSmallIcon(MaterialSymbolsR.drawable.rounded_eyeglasses_2)
             setOngoing(true)
             setProgress(0, 0, true)
         }.build()

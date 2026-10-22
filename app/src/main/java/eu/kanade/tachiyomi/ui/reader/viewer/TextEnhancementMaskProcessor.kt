@@ -5,7 +5,7 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
-import ca.mpreg.imagedecoder.ImageDecoder
+import android.graphics.BitmapFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -150,20 +150,9 @@ object TextEnhancementMaskProcessor {
     }
 
     private fun detect(context: Context, source: BufferedSource, cropBorders: Boolean): Bitmap? {
-        val decoder = source.peek().inputStream().use(ImageDecoder::new)
-        val result = decoder.decode(crop = cropBorders)
-        var sampleSize = 1
-        while (max(result.width, result.height) / sampleSize > MAX_DECODE_SIDE) {
-            sampleSize *= 2
-        }
-        val width = (result.width / sampleSize).coerceAtLeast(1)
-        val height = (result.height / sampleSize).coerceAtLeast(1)
-        // The decoder owns the full native RGBA buffer. Allocate only the sampled
-        // bitmap on the Java side so parallel chapter processing stays bounded.
-        val pixels = sampleRgba(result.image, result.width, width, height, sampleSize)
-        val decoded = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-            copyPixelsFromBuffer(pixels)
-        }
+        // v0.21.2 dropped the libvips based image decoder, so sample with BitmapFactory
+        // and bound the allocation with inSampleSize instead of decoding full native RGBA.
+        val decoded = decodeSampled(source) ?: return null
 
         val inputSize = modelInputSize(decoded.width, decoded.height)
         val scaled = if (decoded.width == inputSize.width && decoded.height == inputSize.height) {
@@ -179,6 +168,22 @@ object TextEnhancementMaskProcessor {
         } finally {
             scaled.recycle()
         }
+    }
+
+    private fun decodeSampled(source: BufferedSource): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        source.peek().inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        var sampleSize = 1
+        while (max(bounds.outWidth, bounds.outHeight) / sampleSize > MAX_DECODE_SIDE) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        return source.peek().inputStream().use { BitmapFactory.decodeStream(it, null, options) }
     }
 
     private fun runModel(context: Context, bitmap: Bitmap): Bitmap? {
