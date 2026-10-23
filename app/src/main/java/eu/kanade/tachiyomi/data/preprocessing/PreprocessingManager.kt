@@ -72,7 +72,7 @@ class PreprocessingManager(
     init {
         // If the previous session died while building, disable the feature instead of
         // crash-looping on every launch.
-        if (crashGuard.edit().getBoolean(KEY_BUILD_ACTIVE, false)) {
+        if (crashGuard.getBoolean(KEY_BUILD_ACTIVE, false)) {
             crashGuard.edit().putBoolean(KEY_BUILD_ACTIVE, false).apply()
             readerPreferences.preprocessingEnabled.set(false)
             logcat(LogPriority.WARN) { "Previous chapter build did not finish; build disabled" }
