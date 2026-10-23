@@ -17,10 +17,12 @@ import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.flow.Flow
+import logcat.LogPriority
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import mihon.app.di.appGraph
 import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.i18n.MR
 
 class PreprocessingJob(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
@@ -46,13 +48,18 @@ class PreprocessingJob(context: Context, workerParams: WorkerParameters) : Corou
     }
 
     override suspend fun doWork(): Result {
-        val processor = manager.workerStart() ?: return Result.success()
-        setForegroundSafely()
         return try {
-            manager.isRunning.first { running -> !running }
-            Result.success()
-        } finally {
-            if (isStopped) manager.workerStop(processor)
+            val processor = manager.workerStart() ?: return Result.success()
+            setForegroundSafely()
+            try {
+                manager.isRunning.first { running -> !running }
+                Result.success()
+            } finally {
+                if (isStopped) manager.workerStop(processor)
+            }
+        } catch (error: Throwable) {
+            logcat(LogPriority.ERROR, error) { "Chapter preprocessing worker failed" }
+            Result.failure()
         }
     }
 

@@ -625,13 +625,15 @@ class MangaViewModel(
                 else -> Download.State.NOT_DOWNLOADED
             }
 
-            val preprocessingTask = preprocessingManager.getQueuedTaskOrNull(chapter.id)
+            val preprocessingTask = runCatching { preprocessingManager.getQueuedTaskOrNull(chapter.id) }.getOrNull()
 
             ChapterList.Item(
                 chapter = chapter,
                 downloadState = downloadState,
                 downloadProgress = activeDownload?.progress ?: 0,
-                preprocessingState = preprocessingTask?.state ?: preprocessingManager.state(chapter.id),
+                preprocessingState = preprocessingTask?.state
+                    ?: runCatching { preprocessingManager.state(chapter.id) }
+                        .getOrDefault(PreprocessingTask.State.NOT_PREPROCESSED),
                 preprocessingProgress = preprocessingTask?.progress ?: 0,
             )
         }

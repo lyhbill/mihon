@@ -188,8 +188,8 @@ object TextEnhancementMaskProcessor {
 
     private fun runModel(context: Context, bitmap: Bitmap): Bitmap? {
         val activeRuntime = runtime ?: synchronized(this) {
-            runtime ?: createRuntime(context).also { runtime = it }
-        }
+            runtime ?: createRuntime(context)?.also { runtime = it }
+        } ?: return null
         val width = bitmap.width
         val height = bitmap.height
         val pixelCount = width * height
@@ -290,7 +290,7 @@ object TextEnhancementMaskProcessor {
         }
     }
 
-    private fun createRuntime(context: Context): Runtime {
+    private fun createRuntime(context: Context): Runtime? {
         val environment = OrtEnvironment.getEnvironment()
         val options = OrtSession.SessionOptions().apply {
             setIntraOpNumThreads(INFERENCE_THREADS)
@@ -302,9 +302,16 @@ object TextEnhancementMaskProcessor {
             // Disabling it trades a small amount of latency for stable reader memory.
             setCPUArenaAllocator(false)
         }
-        val model = context.assets.open(MODEL_ASSET).use { it.readBytes() }
-        val session = environment.createSession(model, options)
-        return Runtime(environment, session, options, session.inputNames.first())
+        return runCatching {
+            val model = context.assets.open(MODEL_ASSET).use { it.readBytes() }
+            val session = environment.createSession(model, options)
+            Runtime(environment, session, options, session.inputNames.first())
+        }.onFailure { error ->
+            // Missing native libs (UnsatisfiedLinkError) or a corrupt model must not
+            // take the whole app down; the chapter build simply fails instead.
+            logcat(LogPriority.ERROR, error) { "Unable to initialise text enhancement runtime" }
+            options.close()
+        }.getOrNull()
     }
 
     private fun modelInputSize(width: Int, height: Int): Size {

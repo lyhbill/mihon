@@ -26,6 +26,7 @@ open class InkSubsamplingImageView @JvmOverloads constructor(
     private var inkStrength = ImageProcessing.TEXT_ENHANCEMENT_MIN
 
     fun setTextEnhancementMask(mask: Bitmap?, strength: Int) {
+        if (mask != null && mask.isRecycled) return
         val maskChanged = inkMask !== mask
         if (maskChanged) {
             inkMask?.recycle()
@@ -62,6 +63,7 @@ open class InkSubsamplingImageView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         val mask = inkMask ?: return
+        if (mask.isRecycled) return
         if (inkStrength == ImageProcessing.TEXT_ENHANCEMENT_MIN || !isReady || sWidth <= 0 || sHeight <= 0) return
 
         val topLeft = sourceToViewCoord(0f, 0f) ?: return
