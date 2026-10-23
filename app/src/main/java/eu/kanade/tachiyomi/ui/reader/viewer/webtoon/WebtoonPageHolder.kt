@@ -301,7 +301,11 @@ class WebtoonPageHolder(
         }
         textEnhancementJob = scope.launch {
             val mask = withContext(Dispatchers.IO) {
-                ChapterPreprocessingArtifacts.loadPage(context, targetPage.chapter.chapter.id, targetPage.index)
+                runCatching {
+                    ChapterPreprocessingArtifacts.loadPage(context, targetPage.chapter.chapter.id, targetPage.index)
+                }.onFailure { error ->
+                    logcat(LogPriority.WARN, error) { "Unable to load text enhancement mask" }
+                }.getOrNull()
             }
             if (mask == null) return@launch
             if (

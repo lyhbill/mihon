@@ -318,8 +318,12 @@ class PagerPageHolder(
 
         textEnhancementJob = scope.launch {
             val mask = withContext(Dispatchers.IO) {
-                val pageIndex = (page as? InsertPage)?.parent?.index ?: page.index
-                ChapterPreprocessingArtifacts.loadPage(context, page.chapter.chapter.id!!, pageIndex)
+                runCatching {
+                    val pageIndex = (page as? InsertPage)?.parent?.index ?: page.index
+                    ChapterPreprocessingArtifacts.loadPage(context, page.chapter.chapter.id, pageIndex)
+                }.onFailure { error ->
+                    logcat(LogPriority.WARN, error) { "Unable to load text enhancement mask" }
+                }.getOrNull()
             }
             if (mask == null) return@launch
             if (viewer.config.textEnhancement <= ImageProcessing.TEXT_ENHANCEMENT_MIN) {

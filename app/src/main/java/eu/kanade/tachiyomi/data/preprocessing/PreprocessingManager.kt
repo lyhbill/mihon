@@ -10,6 +10,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.ChapterPreprocessingArtifacts
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,7 +41,13 @@ class PreprocessingManager(
     private val sourceManager: SourceManager,
     private val store: PreprocessingStore,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Without an exception handler a failure inside the build loop would reach the
+    // default uncaught handler and take the whole app down.
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, error ->
+            logcat(LogPriority.ERROR, error) { "Chapter preprocessing crashed" }
+        },
+    )
 
     private val _queueState = MutableStateFlow<List<PreprocessingTask>>(emptyList())
     val queueState = _queueState.asStateFlow()
@@ -58,9 +65,18 @@ class PreprocessingManager(
 
     private var processorJob: Job? = null
 
+    private val crashGuard = context.getSharedPreferences("chapter_preprocessing", Context.MODE_PRIVATE)
+
     @Volatile private var isPaused = false
 
     init {
+        // If the previous session died while building, disable the feature instead of
+        // crash-looping on every launch.
+        if (crashGuard.edit().getBoolean(KEY_BUILD_ACTIVE, false)) {
+            crashGuard.edit().putBoolean(KEY_BUILD_ACTIVE, false).apply()
+            readerPreferences.preprocessingEnabled.set(false)
+            logcat(LogPriority.WARN) { "Previous chapter build did not finish; build disabled" }
+        }
         scope.launch {
             ChapterPreprocessingArtifacts.recoverInterruptedBuilds(context)
             val restored = async { store.restore() }.await()
@@ -237,14 +253,20 @@ class PreprocessingManager(
             it.state = PreprocessingTask.State.QUEUED
         }
         _isRunning.value = true
+        crashGuard.edit().putBoolean(KEY_BUILD_ACTIVE, true).apply()
         processorJob = scope.launch {
             try {
                 while (!isPaused) {
                     val task = queueState.value.firstOrNull { it.state == PreprocessingTask.State.QUEUED }
                         ?: break
-                    process(task)
+                    runCatching { process(task) }
+                        .onFailure { error ->
+                            logcat(LogPriority.ERROR, error) { "Chapter preprocessing iteration failed" }
+                            runCatching { fail(task, error.message ?: "Chapter preprocessing failed") }
+                        }
                 }
             } finally {
+                crashGuard.edit().putBoolean(KEY_BUILD_ACTIVE, false).apply()
                 _isRunning.value = false
                 if (
                     !isPaused &&
@@ -260,12 +282,12 @@ class PreprocessingManager(
     private suspend fun process(task: PreprocessingTask) {
         task.state = PreprocessingTask.State.PROCESSING
         _taskEvents.emit(task)
-        val chapterFile = findDownloadedChapter(task.source, task.manga, task.chapter)
-        if (chapterFile == null) {
-            fail(task, "Downloaded chapter file no longer exists")
-            return
-        }
         try {
+            val chapterFile = findDownloadedChapter(task.source, task.manga, task.chapter)
+            if (chapterFile == null) {
+                fail(task, "Downloaded chapter file no longer exists")
+                return
+            }
             val success = ChapterPreprocessingArtifacts.build(
                 context = context,
                 chapterId = task.chapter.id,
@@ -320,4 +342,8 @@ class PreprocessingManager(
             manga.title,
             source,
         )
+
+    private companion object {
+        const val KEY_BUILD_ACTIVE = "build_active"
+    }
 }
