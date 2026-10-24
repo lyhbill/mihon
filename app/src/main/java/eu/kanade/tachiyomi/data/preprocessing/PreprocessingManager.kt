@@ -329,8 +329,8 @@ class PreprocessingManager(
     }
 
     private suspend fun fail(task: PreprocessingTask, reason: String) {
-        logcat(LogPriority.WARN) { "Preprocessing failed for ${task.chapter.id}: $reason" }
-        task.state = PreprocessingTask.State.ERROR
+        logcat(LogPriority.ERROR) { "Preprocessing failed for ${task.chapter.name}: $reason" }
+        task.fail(reason)
         _taskEvents.emit(task)
     }
 

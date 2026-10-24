@@ -19,6 +19,19 @@ class PreprocessingTask(
             _state.value = value
         }
 
+    private val _error = MutableStateFlow<String?>(null)
+    val errorFlow = _error.asStateFlow()
+    var error: String?
+        get() = _error.value
+        private set(value) {
+            _error.value = value
+        }
+
+    fun fail(reason: String) {
+        error = reason
+        state = State.ERROR
+    }
+
     private val _progress = MutableStateFlow(0)
     val progressFlow = _progress.asStateFlow()
     val progress: Int get() = _progress.value
@@ -29,6 +42,7 @@ class PreprocessingTask(
         private set
 
     fun prepare(pageCount: Int) {
+        error = null
         totalPages = pageCount
         completedPages = 0
         _progress.value = 0

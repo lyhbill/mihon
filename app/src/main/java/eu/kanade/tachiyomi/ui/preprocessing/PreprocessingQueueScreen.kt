@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -113,6 +114,7 @@ data object PreprocessingQueueScreen : Screen() {
 private fun PreprocessingTaskItem(task: PreprocessingTask, onCancel: () -> Unit) {
     val state by task.stateFlow.collectAsStateWithLifecycle()
     val progress by task.progressFlow.collectAsStateWithLifecycle()
+    val error by task.errorFlow.collectAsStateWithLifecycle()
     ListItem(
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -131,6 +133,13 @@ private fun PreprocessingTaskItem(task: PreprocessingTask, onCancel: () -> Unit)
                     LinearProgressIndicator(
                         progress = { progress / 100f },
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (state == PreprocessingTask.State.ERROR && !error.isNullOrBlank()) {
+                    Text(
+                        text = error.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
