@@ -186,23 +186,19 @@ jobs:
           retention-days: 14
 
       - name: Publish arm64 APK to a rolling release
-        # artifact 包是 5 个 ABI 打包的 219 MB zip，手机上根本没法下；
-        # 这里把 arm64 单包（~60 MB）挂到 port-latest 这个滚动 Release 上，手机直接点链接下载。
+        # 用 gh CLI 代替 softprops/action-gh-release：少一个第三方 action，也不依赖它的 Node 运行时。
         if: github.ref == 'refs/heads/port/smartos'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: port-latest
-          name: Port build (latest)
-          body: |
-            自动构建：分支 port/smartos @ ${{ github.sha }}
-
-            - 适用：arm64-v8a（iReader SmartOS 4+ / 现代 Android 设备）
-            - 签名：debug（不可覆盖官方 Mihon）
-            - 包含：水波纹翻页、图像调整、文字增强、章节构建、分页阅读增强
-          files: app/build/outputs/apk/release/app-arm64-v8a-release.apk
-          fail_on_unmatched_files: true
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-arm64-v8a-release.apk
+          NOTES="自动构建：分支 port/smartos @ ${SHA}"$'\n\n'"- 适用：arm64-v8a（iReader SmartOS 4+ / 现代 Android 设备）"$'\n'"- 签名：debug（不可覆盖官方 Mihon）"$'\n'"- 包含：水波纹翻页、图像调整、文字增强、章节构建、超分、分页阅读增强"
+          gh release view port-latest >/dev/null 2>&1 || gh release create port-latest --title "Port build (latest)" --notes "$NOTES"
+          gh release edit port-latest --notes "$NOTES"
+          gh release upload port-latest "$APK" --clobber
 
       - name: Summary
         if: always()
