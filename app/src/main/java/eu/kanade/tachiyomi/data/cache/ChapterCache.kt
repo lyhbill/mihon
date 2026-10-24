@@ -1,5 +1,12 @@
 package eu.kanade.tachiyomi.data.cache
 
+import eu.kanade.domain.base.BasePreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+
 import android.content.Context
 import android.text.format.Formatter
 import com.jakewharton.disklrucache.DiskLruCache
@@ -32,7 +39,17 @@ import java.io.IOException
 class ChapterCache(
     private val context: Context,
     private val json: Json,
+    preferences: BasePreferences,
 ) {
+
+    private val limitPreference = preferences.chapterCacheLimitMb
+
+    init {
+        // DiskLruCache trims itself when maxSize changes, so the setting applies live.
+        CoroutineScope(Dispatchers.IO).launch {
+            limitPreference.changes().onEach { updateLimit(it) }.launchIn(this)
+        }
+    }
 
     /** Cache class used for cache management. */
     private val diskCache by lazy {
@@ -40,8 +57,17 @@ class ChapterCache(
             File(context.cacheDir, "chapter_disk_cache"),
             PARAMETER_APP_VERSION,
             PARAMETER_VALUE_COUNT,
-            PARAMETER_CACHE_SIZE,
+            limitPreference.get().toLong().let { mb ->
+                if (mb <= 0) Long.MAX_VALUE / 4 else mb * 1024L * 1024L
+            },
         )
+    }
+
+    private fun updateLimit(limitMb: Int) {
+        runCatching {
+            diskCache.maxSize = if (limitMb <= 0) Long.MAX_VALUE / 4 else limitMb * 1024L * 1024L
+            diskCache.flush()
+        }
     }
 
     /**

@@ -1150,4 +1150,6 @@
     <string name="super_resolution_engine_quantized">AI super resolution, quantised (faster)</string>
     <string name="pref_auto_check_updates">Check for app updates</string>
     <string name="pref_auto_check_updates_summary">Queries mihon.app about once a day; off by default in this build</string>
+    <string name="pref_chapter_cache_limit">Chapter cache limit</string>
+    <string name="pref_chapter_cache_limit_summary">Cached reader pages; the least recently used chapters are dropped when exceeded</string>
 </resources>

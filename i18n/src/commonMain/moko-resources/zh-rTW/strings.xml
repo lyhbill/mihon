@@ -985,4 +985,6 @@
     <string name="super_resolution_engine_quantized">AI 超解析（量化版，更快）</string>
     <string name="pref_auto_check_updates">檢查應用程式更新</string>
     <string name="pref_auto_check_updates_summary">開啟後每天連線 mihon.app 檢查一次；本版本預設關閉</string>
+    <string name="pref_chapter_cache_limit">章節快取上限</string>
+    <string name="pref_chapter_cache_limit_summary">閱讀時的頁面快取，超過後自動刪除最久未用的章節</string>
 </resources>

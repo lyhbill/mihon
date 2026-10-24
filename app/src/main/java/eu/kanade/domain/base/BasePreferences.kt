@@ -24,6 +24,12 @@ class BasePreferences(
 
     val incognitoMode: Preference<Boolean> = preferenceStore.getBoolean(Preference.appStateKey("incognito_mode"), false)
 
+    /** Upper bound for the reader page cache, in MiB (0 = unlimited). */
+    val chapterCacheLimitMb: Preference<Int> = preferenceStore.getInt(
+        Preference.appStateKey("pref_chapter_cache_limit_mb"),
+        100,
+    )
+
     /** Mihon only contacts the update endpoint when the user opts in. */
     val autoCheckForUpdates: Preference<Boolean> = preferenceStore.getBoolean(
         Preference.appStateKey("pref_auto_check_updates"),

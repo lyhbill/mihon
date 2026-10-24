@@ -118,6 +118,7 @@ object SettingsDataScreen : SearchableSettings {
     @Composable
     private fun getStorageManagementGroup(context: Context): Preference.PreferenceGroup {
         val readerPreferences = remember { context.appGraph.readerPreferences }
+        val basePreferences = remember { context.appGraph.basePreferences }
         val scope = rememberCoroutineScope()
         val usage = remember { mutableLongStateOf(-1L) }
         LaunchedEffect(Unit) {
@@ -130,6 +131,20 @@ object SettingsDataScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_category_storage_management),
             preferenceItems = listOf(
+                Preference.PreferenceItem.ListPreference(
+                    preference = basePreferences.chapterCacheLimitMb,
+                    entries = listOf(100, 256, 512, 1024, 0).associateWith { mb ->
+                        if (mb == 0) {
+                            stringResource(MR.strings.unlimited)
+                        } else if (mb >= 1024) {
+                            "${mb / 1024} GB"
+                        } else {
+                            "$mb MB"
+                        }
+                    },
+                    title = stringResource(MR.strings.pref_chapter_cache_limit),
+                    subtitle = stringResource(MR.strings.pref_chapter_cache_limit_summary),
+                ),
                 Preference.PreferenceItem.ListPreference(
                     preference = readerPreferences.buildDataLimitMb,
                     entries = ReaderPreferences.BUILD_DATA_LIMIT_OPTIONS_MB.associateWith { mb ->
