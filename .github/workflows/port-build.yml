@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           # 浅克隆仓库（本仓库只有少量提交）也能工作。
           # 注意：上游 build.gradle.kts 用 `git rev-list --count HEAD` 生成 COMMIT_COUNT，
@@ -65,7 +65,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
         with:
           distribution: temurin
           java-version: '21'
@@ -123,7 +123,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
         # 不传 cache-read-only / gradle-home-cache-cleanup：这两个输入在 v6 已废弃，
         # 留着会触发 “deprecated functionality” 警告。默认即读写缓存 + 自动清理。
 
@@ -165,7 +165,7 @@ jobs:
         run: ./gradlew --no-daemon verifySqlDelightMigration
 
       - name: Upload release APKs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: mihon-smartos-apk
           # ABI splits + universal APK（app/build.gradle.kts 里 splits.abi 开启）
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload unit test report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: mihon-smartos-unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
@@ -197,7 +197,8 @@ jobs:
 - 适用：arm64-v8a（iReader SmartOS 4+ / 现代 Android 设备）
 - 签名：debug（不可覆盖官方 Mihon）
 - 包含：水波纹翻页、图像调整、文字增强、章节构建、超分、分页阅读增强' "$SHA")
-          gh release view port-latest >/dev/null 2>&1 ||             gh release create port-latest --title 'Port build (latest)' --notes "$NOTES"
+          gh release view port-latest >/dev/null 2>&1 || \
+            gh release create port-latest --title 'Port build (latest)' --notes "$NOTES"
           gh release edit port-latest --notes "$NOTES"
           gh release upload port-latest "$APK" --clobber
 
