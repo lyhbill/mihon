@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
+import ai.onnxruntime.OnnxJavaType
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -12,6 +13,7 @@ import android.graphics.RectF
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
 /**
@@ -31,11 +33,16 @@ object OnnxSuperResolution {
     private const val MAX_SOURCE_SIDE = 1600
 
     private const val MODEL_DIRECTORY = "super_resolution"
-    private const val MODEL_FILE = "real_esrgan_x4plus.onnx"
-    private const val MODEL_DATA_FILE = "real_esrgan_x4plus.data"
+    private const val FLOAT_MODEL = "real_esrgan_x4plus.onnx"
+    private const val FLOAT_DATA = "real_esrgan_x4plus.data"
+    private const val QUANTIZED_MODEL = "real_esrgan_x4plus_w8a8.onnx"
+    private const val QUANTIZED_DATA = "real_esrgan_x4plus_w8a8.data"
 
     @Volatile
-    private var runtime: Runtime? = null
+    private var floatRuntime: Runtime? = null
+
+    @Volatile
+    private var quantizedRuntime: Runtime? = null
 
     fun isAvailable(context: Context): Boolean {
         return runCatching { ensureRuntime(context) != null }.getOrDefault(false)
@@ -45,8 +52,8 @@ object OnnxSuperResolution {
      * Upscales [source] with the neural network. Returns null when the model cannot be used,
      * in which case the caller falls back to [SuperResolution].
      */
-    fun upscale(context: Context, source: Bitmap, factor: Int): Bitmap? {
-        val active = runCatching { ensureRuntime(context) }.getOrNull() ?: return null
+    fun upscale(context: Context, source: Bitmap, factor: Int, quantized: Boolean): Bitmap? {
+        val active = runCatching { ensureRuntime(context, quantized) }.getOrNull() ?: return null
         val prepared = if (maxOf(source.width, source.height) > MAX_SOURCE_SIDE) {
             val ratio = MAX_SOURCE_SIDE.toFloat() / maxOf(source.width, source.height)
             Bitmap.createScaledBitmap(
@@ -60,7 +67,7 @@ object OnnxSuperResolution {
         }
         val input = prepared ?: source
         return try {
-            runTiles(active, input, factor)
+            runTiles(active, input, factor, quantized)
         } catch (error: Throwable) {
             logcat(LogPriority.ERROR, error) { "Super resolution inference failed" }
             null
@@ -69,7 +76,7 @@ object OnnxSuperResolution {
         }
     }
 
-    private fun runTiles(active: Runtime, input: Bitmap, factor: Int): Bitmap {
+    private fun runTiles(active: Runtime, input: Bitmap, factor: Int, quantized: Boolean): Bitmap {
         val width = input.width
         val height = input.height
         val targetFactor = factor.coerceIn(2, 4)
@@ -146,6 +153,51 @@ object OnnxSuperResolution {
         return output
     }
 
+    private fun inferQuantized(
+        active: Runtime,
+        sourcePixels: IntArray,
+        width: Int,
+        x0: Int,
+        y0: Int,
+        outSide: Int,
+    ): IntArray {
+        val plane = TILE * TILE
+        val buffer = ByteBuffer.allocateDirect(3 * plane)
+        for (channel in 0 until 3) {
+            val shift = when (channel) {
+                0 -> 16
+                1 -> 8
+                else -> 0
+            }
+            for (y in 0 until TILE) {
+                val rowOffset = (y0 + y) * width + x0
+                for (x in 0 until TILE) {
+                    buffer.put(((sourcePixels[rowOffset + x] shr shift) and 0xFF).toByte())
+                }
+            }
+        }
+        buffer.rewind()
+        val pixels = IntArray(outSide * outSide)
+        OnnxTensor.createTensor(
+            active.environment,
+            buffer,
+            longArrayOf(1, 3, TILE.toLong(), TILE.toLong()),
+            OnnxJavaType.UINT8,
+        ).use { tensor ->
+            active.session.run(mapOf(active.inputName to tensor)).use { result ->
+                val bytes = (result[0] as OnnxTensor).byteBuffer
+                val planeOut = outSide * outSide
+                for (index in 0 until planeOut) {
+                    val r = bytes.get(index).toInt() and 0xFF
+                    val g = bytes.get(planeOut + index).toInt() and 0xFF
+                    val b = bytes.get(2 * planeOut + index).toInt() and 0xFF
+                    pixels[index] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
+        }
+        return pixels
+    }
+
     /** Tile origins along one axis; the last tile is clamped so the edge is always covered. */
     private fun positions(length: Int): IntArray {
         if (length <= TILE) return intArrayOf(0)
@@ -159,16 +211,20 @@ object OnnxSuperResolution {
         return result.toIntArray()
     }
 
-    private fun ensureRuntime(context: Context): Runtime? {
-        runtime?.let { return it }
+    private fun ensureRuntime(context: Context, quantized: Boolean): Runtime? {
+        val cached = if (quantized) quantizedRuntime else floatRuntime
+        if (cached != null) return cached
         synchronized(this) {
-            runtime?.let { return it }
+            val current = if (quantized) quantizedRuntime else floatRuntime
+            if (current != null) return current
+            val modelName = if (quantized) QUANTIZED_MODEL else FLOAT_MODEL
+            val dataName = if (quantized) QUANTIZED_DATA else FLOAT_DATA
             val directory = File(context.filesDir, MODEL_DIRECTORY)
             if (!directory.exists()) directory.mkdirs()
-            val modelFile = File(directory, MODEL_FILE)
-            val dataFile = File(directory, MODEL_DATA_FILE)
-            copyAssetIfNeeded(context, MODEL_FILE, modelFile)
-            copyAssetIfNeeded(context, MODEL_DATA_FILE, dataFile)
+            val modelFile = File(directory, modelName)
+            val dataFile = File(directory, dataName)
+            copyAssetIfNeeded(context, modelName, modelFile)
+            copyAssetIfNeeded(context, dataName, dataFile)
 
             val environment = OrtEnvironment.getEnvironment()
             val options = OrtSession.SessionOptions().apply {
@@ -178,20 +234,19 @@ object OnnxSuperResolution {
                 setCPUArenaAllocator(false)
             }
             val session = environment.createSession(modelFile.absolutePath, options)
-            return Runtime(environment, session, options, session.inputNames.first()).also {
-                runtime = it
-            }
+            val created = Runtime(environment, session, options, session.inputNames.first())
+            if (quantized) quantizedRuntime = created else floatRuntime = created
+            return created
         }
     }
 
     private fun copyAssetIfNeeded(context: Context, assetName: String, destination: File) {
-        val expected = runCatching {
-            context.assets.openFd("$MODEL_DIRECTORY/$assetName").length
-        }.getOrNull()
-        if (destination.isFile && expected != null && destination.length() == expected) return
+        val marker = File(destination.parentFile, "$assetName.ok")
+        if (destination.isFile && marker.isFile && destination.length() > 0L) return
         context.assets.open("$MODEL_DIRECTORY/$assetName").use { input ->
             destination.outputStream().use { output -> input.copyTo(output) }
         }
+        marker.writeText(destination.length().toString())
     }
 
     private data class Runtime(

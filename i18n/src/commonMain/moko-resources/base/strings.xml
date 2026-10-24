@@ -1147,4 +1147,7 @@
     <string name="pref_super_resolution_engine_summary">AI is the sharpest but needs roughly a second per 128 px tile; resampling is fast and artefact free</string>
     <string name="super_resolution_engine_resample">High quality resampling (fast)</string>
     <string name="super_resolution_engine_ai">AI super resolution (slow)</string>
+    <string name="super_resolution_engine_quantized">AI super resolution, quantised (faster)</string>
+    <string name="pref_auto_check_updates">Check for app updates</string>
+    <string name="pref_auto_check_updates_summary">Queries mihon.app about once a day; off by default in this build</string>
 </resources>

@@ -83,6 +83,11 @@ object SettingsAdvancedScreen : SearchableSettings {
         val crashLogUtil = remember { graph.crashLogUtil }
 
         return listOf(
+            Preference.PreferenceItem.SwitchPreference(
+                preference = basePreferences.autoCheckForUpdates,
+                title = stringResource(MR.strings.pref_auto_check_updates),
+                subtitle = stringResource(MR.strings.pref_auto_check_updates_summary),
+            ),
             Preference.PreferenceItem.TextPreference(
                 title = stringResource(MR.strings.pref_dump_crash_logs),
                 subtitle = stringResource(MR.strings.pref_dump_crash_logs_summary),

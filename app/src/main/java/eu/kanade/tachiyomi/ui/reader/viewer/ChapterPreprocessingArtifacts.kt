@@ -387,8 +387,12 @@ object ChapterPreprocessingArtifacts {
         } else {
             0
         }
-        // Upscaling multiplies peak memory by four, so never run it in parallel.
-        val effectiveParallelism = if (upscaleFactor > 0) 1 else parallelism
+        // Upscaling multiplies peak memory, so cap it instead of forcing a single worker.
+        val effectiveParallelism = if (upscaleFactor > 0) {
+            parallelism.coerceAtMost(MAX_PARALLELISM_UPSCALING)
+        } else {
+            parallelism
+        }
         val workerCount = effectiveParallelism.coerceIn(MIN_PARALLELISM, MAX_PARALLELISM)
             .coerceAtMost(pendingPages.size)
         val pageSources = Channel<PageSource>()
@@ -412,13 +416,15 @@ object ChapterPreprocessingArtifacts {
                         ?: error("Unable to decode chapter page ${page.index}")
                     val upscaled = if (upscaleFactor > 0) {
                         runCatching {
-                            val ai = context.appGraph.readerPreferences.superResolutionEngine.get() ==
-                                ReaderPreferences.SuperResolutionEngine.AI
-                            if (ai) {
-                                OnnxSuperResolution.upscale(context, decoded, upscaleFactor)
-                                    ?: SuperResolution.upscale(decoded, upscaleFactor)
-                            } else {
-                                SuperResolution.upscale(decoded, upscaleFactor)
+                            when (context.appGraph.readerPreferences.superResolutionEngine.get()) {
+                                ReaderPreferences.SuperResolutionEngine.AI ->
+                                    OnnxSuperResolution.upscale(context, decoded, upscaleFactor, quantized = false)
+                                        ?: SuperResolution.upscale(decoded, upscaleFactor)
+                                ReaderPreferences.SuperResolutionEngine.QUANTIZED ->
+                                    OnnxSuperResolution.upscale(context, decoded, upscaleFactor, quantized = true)
+                                        ?: SuperResolution.upscale(decoded, upscaleFactor)
+                                ReaderPreferences.SuperResolutionEngine.RESAMPLE ->
+                                    SuperResolution.upscale(decoded, upscaleFactor)
                             }
                         }.getOrNull()
                     } else {
@@ -613,6 +619,7 @@ object ChapterPreprocessingArtifacts {
     internal const val ARTIFACT_EXTENSION = "ppc"
     internal const val MIN_PARALLELISM = 1
     internal const val MAX_PARALLELISM = 8
+    internal const val MAX_PARALLELISM_UPSCALING = 4
     private const val ARTIFACT_DIRECTORY = "chapter-preprocessing-v1"
     private const val UPSCALED_JPEG_QUALITY = 90
     private const val OUTPUT_KIND_MASK = "text-mask"

@@ -376,6 +376,10 @@ class MainActivity : BaseActivity() {
             // Elapsed realtime keeps counting while the device sleeps, unlike the monotonic clock.
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
+                    if (!preferences.autoCheckForUpdates.get()) {
+                        delay(APP_UPDATE_CHECK_INTERVAL.inWholeMilliseconds)
+                        continue
+                    }
                     lastCheck?.let {
                         delay(it + APP_UPDATE_CHECK_INTERVAL.inWholeMilliseconds - SystemClock.elapsedRealtime())
                     }

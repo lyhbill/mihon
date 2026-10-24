@@ -24,6 +24,12 @@ class BasePreferences(
 
     val incognitoMode: Preference<Boolean> = preferenceStore.getBoolean(Preference.appStateKey("incognito_mode"), false)
 
+    /** Mihon only contacts the update endpoint when the user opts in. */
+    val autoCheckForUpdates: Preference<Boolean> = preferenceStore.getBoolean(
+        Preference.appStateKey("pref_auto_check_updates"),
+        false,
+    )
+
     val extensionInstaller: ExtensionInstallerPreference = ExtensionInstallerPreference(context, preferenceStore)
 
     val shownOnboardingFlow: Preference<Boolean> = preferenceStore.getBoolean(

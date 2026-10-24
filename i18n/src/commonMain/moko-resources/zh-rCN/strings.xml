@@ -1012,4 +1012,7 @@
     <string name="pref_super_resolution_engine_summary">AI 效果最好，但每 128 像素方块约需 1 秒；重采样很快且无伪影</string>
     <string name="super_resolution_engine_resample">高质量重采样（快）</string>
     <string name="super_resolution_engine_ai">AI 超分（慢）</string>
+    <string name="super_resolution_engine_quantized">AI 超分（量化版，更快）</string>
+    <string name="pref_auto_check_updates">检查应用更新</string>
+    <string name="pref_auto_check_updates_summary">开启后每天连接 mihon.app 检查一次；本版本默认关闭</string>
 </resources>
