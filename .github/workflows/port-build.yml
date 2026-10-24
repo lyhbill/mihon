@@ -138,6 +138,26 @@ jobs:
         #            且不触发 MIHON_GITHUB_RELEASE 分支（= 使用 debug 签名）
         run: ./gradlew --no-daemon assembleRelease -Pdist=ci
 
+      - name: Verify model asset integrity
+        # .gitattributes 的 `* text eol=lf` 会把 *.onnx 当文本归一化（丢掉 41 个 CR 字节），
+        # 导致 ONNX Runtime 报 ORT_INVALID_PROTOBUF。这里在 CI 上做一次字节级校对。
+        shell: bash
+        run: |
+          python3 - <<'EOF'
+          import hashlib, zipfile, glob, sys
+          src = 'app/src/main/assets/text_enhancement/ppocrv5_mobile_det.onnx'
+          want = hashlib.sha256(open(src, 'rb').read()).hexdigest()
+          apks = glob.glob('app/build/outputs/apk/release/*arm64-v8a*.apk')
+          if not apks:
+              print('::error::arm64 APK not found'); sys.exit(1)
+          got = hashlib.sha256(zipfile.ZipFile(apks[0]).read('assets/text_enhancement/ppocrv5_mobile_det.onnx')).hexdigest()
+          print('source:', want)
+          print('apk   :', got)
+          if want != got:
+              print('::error::model asset was altered during packaging')
+              sys.exit(1)
+          EOF
+
       - name: Run unit tests
         id: unit_tests
         # 单测失败不阻塞出包，但会在 summary 与报告 artifact 里可见
