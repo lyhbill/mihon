@@ -1143,4 +1143,8 @@
     <string name="action_clear_build_data">Clear build data</string>
     <string name="action_clear_build_data_summary">Deletes upscaled pages and text masks; they are rebuilt on demand</string>
     <string name="unlimited">Unlimited</string>
+    <string name="pref_super_resolution_engine">Super resolution engine</string>
+    <string name="pref_super_resolution_engine_summary">AI is the sharpest but needs roughly a second per 128 px tile; resampling is fast and artefact free</string>
+    <string name="super_resolution_engine_resample">High quality resampling (fast)</string>
+    <string name="super_resolution_engine_ai">AI super resolution (slow)</string>
 </resources>

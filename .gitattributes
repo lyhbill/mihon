@@ -21,5 +21,6 @@
 *.eot binary
 *.woff binary
 *.onnx binary
+*.data binary
 *.pyc binary
 *.swp binary

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import mihon.app.di.appGraph
 import logcat.LogPriority
 import mihon.core.archive.archiveReader
@@ -410,7 +411,16 @@ object ChapterPreprocessingArtifacts {
                     val decoded = TextEnhancementMaskProcessor.decodePage(page.source)
                         ?: error("Unable to decode chapter page ${page.index}")
                     val upscaled = if (upscaleFactor > 0) {
-                        runCatching { SuperResolution.upscale(decoded, upscaleFactor) }.getOrNull()
+                        runCatching {
+                            val ai = context.appGraph.readerPreferences.superResolutionEngine.get() ==
+                                ReaderPreferences.SuperResolutionEngine.AI
+                            if (ai) {
+                                OnnxSuperResolution.upscale(context, decoded, upscaleFactor)
+                                    ?: SuperResolution.upscale(decoded, upscaleFactor)
+                            } else {
+                                SuperResolution.upscale(decoded, upscaleFactor)
+                            }
+                        }.getOrNull()
                     } else {
                         null
                     }

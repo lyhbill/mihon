@@ -1008,4 +1008,8 @@
     <string name="action_clear_build_data">清除构建数据</string>
     <string name="action_clear_build_data_summary">删除已生成的放大图片和文字蒙版，之后可重新构建</string>
     <string name="unlimited">不限制</string>
+    <string name="pref_super_resolution_engine">超分方式</string>
+    <string name="pref_super_resolution_engine_summary">AI 效果最好，但每 128 像素方块约需 1 秒；重采样很快且无伪影</string>
+    <string name="super_resolution_engine_resample">高质量重采样（快）</string>
+    <string name="super_resolution_engine_ai">AI 超分（慢）</string>
 </resources>

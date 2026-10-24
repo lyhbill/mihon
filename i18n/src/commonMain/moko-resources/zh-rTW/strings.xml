@@ -978,4 +978,8 @@
     <string name="action_clear_build_data">清除建構資料</string>
     <string name="action_clear_build_data_summary">刪除已產生的放大圖片和文字遮罩，之後可重新建構</string>
     <string name="unlimited">不限制</string>
+    <string name="pref_super_resolution_engine">超解析方式</string>
+    <string name="pref_super_resolution_engine_summary">AI 效果最好，但每 128 像素方塊約需 1 秒；重取樣很快且無偽影</string>
+    <string name="super_resolution_engine_resample">高品質重取樣（快）</string>
+    <string name="super_resolution_engine_ai">AI 超解析（慢）</string>
 </resources>
