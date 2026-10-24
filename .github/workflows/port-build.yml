@@ -124,11 +124,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
-        with:
-          # 分支/PR 间共享 Gradle 缓存（含 wrapper 发行版与构建缓存）。
-          # 上游用 v6 + cache-encryption-key secret；此处不引入 secret，保持 fork 可直接跑。
-          cache-read-only: false
-          gradle-home-cache-cleanup: true
+        # 不传任何输入：cache-read-only / gradle-home-cache-cleanup 在 v6 已废弃，
+        # 默认行为（读写缓存 + 构建后自动清理）就是我们要的。
 
       - name: Assemble release APK
         id: build
