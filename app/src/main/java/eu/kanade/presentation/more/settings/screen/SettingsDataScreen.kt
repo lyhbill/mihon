@@ -1,6 +1,7 @@
 package eu.kanade.presentation.more.settings.screen
 
 import android.content.ActivityNotFoundException
+import androidx.compose.runtime.mutableLongStateOf
 import android.content.Context
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.ChapterPreprocessingArtifacts
@@ -118,8 +119,9 @@ object SettingsDataScreen : SearchableSettings {
     private fun getStorageManagementGroup(context: Context): Preference.PreferenceGroup {
         val readerPreferences = remember { context.appGraph.readerPreferences }
         val scope = rememberCoroutineScope()
-        var usage by produceState(initialValue = -1L) {
-            value = withContext(Dispatchers.IO) {
+        val usage = remember { mutableLongStateOf(-1L) }
+        LaunchedEffect(Unit) {
+            usage.longValue = withContext(Dispatchers.IO) {
                 ChapterPreprocessingArtifacts.totalSize(context)
             }
         }
@@ -145,7 +147,7 @@ object SettingsDataScreen : SearchableSettings {
                 Preference.PreferenceItem.InfoPreference(
                     stringResource(
                         MR.strings.pref_build_data_usage,
-                        if (usage < 0) "…" else "${usage / (1024 * 1024)} MB",
+                        if (usage.longValue < 0) "…" else "${usage.longValue / (1024 * 1024)} MB",
                         if (limitMb == 0) "∞" else "$limitMb MB",
                     ),
                 ),
@@ -157,7 +159,7 @@ object SettingsDataScreen : SearchableSettings {
                             withContext(Dispatchers.IO) {
                                 ChapterPreprocessingArtifacts.deleteAll(context)
                             }
-                            usage = withContext(Dispatchers.IO) {
+                            usage.longValue = withContext(Dispatchers.IO) {
                                 ChapterPreprocessingArtifacts.totalSize(context)
                             }
                         }
