@@ -45,7 +45,7 @@ object OnnxSuperResolution {
     private var quantizedRuntime: Runtime? = null
 
     fun isAvailable(context: Context): Boolean {
-        return runCatching { ensureRuntime(context) != null }.getOrDefault(false)
+        return runCatching { ensureRuntime(context, quantized = false) != null }.getOrDefault(false)
     }
 
     /**
