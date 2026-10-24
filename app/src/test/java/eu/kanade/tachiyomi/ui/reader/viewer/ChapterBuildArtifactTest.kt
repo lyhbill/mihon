@@ -29,7 +29,7 @@ class ChapterBuildArtifactTest {
             append(ChapterPreprocessingArtifacts.DATABASE_SCHEMA)
         }
 
-        assertEquals("ppc1", formatIdentity)
+        assertEquals("ppc2", formatIdentity)
         assertFalse(formatIdentity.contains("shihon", ignoreCase = true))
         assertFalse(formatIdentity.contains("shihon", ignoreCase = true))
     }

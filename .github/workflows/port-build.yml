@@ -160,8 +160,6 @@ jobs:
 
       - name: Run unit tests
         id: unit_tests
-        # 单测失败不阻塞出包，但会在 summary 与报告 artifact 里可见
-        continue-on-error: true
         run: ./gradlew --no-daemon testDebugUnitTest
 
       - name: Verify SQLDelight migrations
