@@ -108,6 +108,25 @@ object TextEnhancementMaskProcessor {
 
     /** Builds a mask from a bitmap that is already decoded (and possibly upscaled). */
     internal suspend fun createArtifactMaskFromBitmap(context: Context, bitmap: Bitmap): ByteArray? {
+        // The detector only accepts multiples of MODEL_STRIDE on both axes; pages coming from
+        // the build pipeline are arbitrary sizes, so normalise exactly like detect() does.
+        val inputSize = modelInputSize(bitmap.width, bitmap.height)
+        val scaled = if (bitmap.width == inputSize.width && bitmap.height == inputSize.height) {
+            bitmap
+        } else {
+            Bitmap.createScaledBitmap(bitmap, inputSize.width, inputSize.height, true)
+        }
+        if (scaled !== bitmap) {
+            return try {
+                createArtifactMaskFromScaled(context, scaled)
+            } finally {
+                scaled.recycle()
+            }
+        }
+        return createArtifactMaskFromScaled(context, scaled)
+    }
+
+    private suspend fun createArtifactMaskFromScaled(context: Context, bitmap: Bitmap): ByteArray? {
         val mask = runModel(context.applicationContext, bitmap) ?: return null
         return try {
             encodeArtifactMask(mask)

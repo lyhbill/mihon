@@ -418,10 +418,7 @@ object ChapterPreprocessingArtifacts {
                         runCatching {
                             when (context.appGraph.readerPreferences.superResolutionEngine.get()) {
                                 ReaderPreferences.SuperResolutionEngine.AI ->
-                                    OnnxSuperResolution.upscale(context, decoded, upscaleFactor, quantized = false)
-                                        ?: SuperResolution.upscale(decoded, upscaleFactor)
-                                ReaderPreferences.SuperResolutionEngine.QUANTIZED ->
-                                    OnnxSuperResolution.upscale(context, decoded, upscaleFactor, quantized = true)
+                                    OnnxSuperResolution.upscale(context, decoded, upscaleFactor)
                                         ?: SuperResolution.upscale(decoded, upscaleFactor)
                                 ReaderPreferences.SuperResolutionEngine.RESAMPLE ->
                                     SuperResolution.upscale(decoded, upscaleFactor)

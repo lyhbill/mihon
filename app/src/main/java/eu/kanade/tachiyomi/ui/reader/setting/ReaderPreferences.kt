@@ -324,7 +324,6 @@ class ReaderPreferences(
     enum class SuperResolutionEngine(val titleRes: StringResource) {
         RESAMPLE(MR.strings.super_resolution_engine_resample),
         AI(MR.strings.super_resolution_engine_ai),
-        QUANTIZED(MR.strings.super_resolution_engine_quantized),
     }
 
     enum class WaterRippleSpeed(val titleRes: StringResource, val commandFlag: Int) {
