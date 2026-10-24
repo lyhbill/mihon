@@ -124,8 +124,11 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
-        # 不传 cache-read-only / gradle-home-cache-cleanup：这两个输入在 v6 已废弃，
-        # 留着会触发 “deprecated functionality” 警告。默认即读写缓存 + 自动清理。
+        with:
+          # 分支/PR 间共享 Gradle 缓存（含 wrapper 发行版与构建缓存）。
+          # 上游用 v6 + cache-encryption-key secret；此处不引入 secret，保持 fork 可直接跑。
+          cache-read-only: false
+          gradle-home-cache-cleanup: true
 
       - name: Assemble release APK
         id: build
@@ -183,24 +186,23 @@ jobs:
           retention-days: 14
 
       - name: Publish arm64 APK to a rolling release
-        # 用 gh CLI 代替 softprops/action-gh-release：少一个第三方 action，也不用跟着它升 Node 运行时。
+        # artifact 包是 5 个 ABI 打包的 219 MB zip，手机上根本没法下；
+        # 这里把 arm64 单包（~60 MB）挂到 port-latest 这个滚动 Release 上，手机直接点链接下载。
         if: github.ref == 'refs/heads/port/smartos'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          APK=app/build/outputs/apk/release/app-arm64-v8a-release.apk
-          NOTES=$(printf '自动构建：分支 port/smartos @ %s
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: port-latest
+          name: Port build (latest)
+          body: |
+            自动构建：分支 port/smartos @ ${{ github.sha }}
 
-- 适用：arm64-v8a（iReader SmartOS 4+ / 现代 Android 设备）
-- 签名：debug（不可覆盖官方 Mihon）
-- 包含：水波纹翻页、图像调整、文字增强、章节构建、超分、分页阅读增强' "$SHA")
-          gh release view port-latest >/dev/null 2>&1 || \
-            gh release create port-latest --title 'Port build (latest)' --notes "$NOTES"
-          gh release edit port-latest --notes "$NOTES"
-          gh release upload port-latest "$APK" --clobber
+            - 适用：arm64-v8a（iReader SmartOS 4+ / 现代 Android 设备）
+            - 签名：debug（不可覆盖官方 Mihon）
+            - 包含：水波纹翻页、图像调整、文字增强、章节构建、分页阅读增强
+          files: app/build/outputs/apk/release/app-arm64-v8a-release.apk
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
         if: always()
