@@ -41,6 +41,9 @@ object TextEnhancementMaskProcessor {
 
     private val cacheMutex = Mutex()
 
+    /** The detector session is shared; serialise inference so shapes never interleave. */
+    private val inferenceMutex = Mutex()
+
     @Volatile
     private var runtime: Runtime? = null
 
@@ -104,7 +107,7 @@ object TextEnhancementMaskProcessor {
     }
 
     /** Builds a mask from a bitmap that is already decoded (and possibly upscaled). */
-    internal fun createArtifactMaskFromBitmap(context: Context, bitmap: Bitmap): ByteArray? {
+    internal suspend fun createArtifactMaskFromBitmap(context: Context, bitmap: Bitmap): ByteArray? {
         val mask = runModel(context.applicationContext, bitmap) ?: return null
         return try {
             encodeArtifactMask(mask)
@@ -167,7 +170,7 @@ object TextEnhancementMaskProcessor {
         }.orEmpty().forEach(File::delete)
     }
 
-    private fun detect(context: Context, source: BufferedSource, cropBorders: Boolean): Bitmap? {
+    private suspend fun detect(context: Context, source: BufferedSource, cropBorders: Boolean): Bitmap? {
         // v0.21.2 dropped the libvips based image decoder, so sample with BitmapFactory
         // and bound the allocation with inSampleSize instead of decoding full native RGBA.
         val decoded = decodeSampled(source) ?: return null
@@ -204,7 +207,10 @@ object TextEnhancementMaskProcessor {
         return source.peek().inputStream().use { BitmapFactory.decodeStream(it, null, options) }
     }
 
-    private fun runModel(context: Context, bitmap: Bitmap): Bitmap? {
+    private suspend fun runModel(context: Context, bitmap: Bitmap): Bitmap? =
+        inferenceMutex.withLock { runModelLocked(context, bitmap) }
+
+    private fun runModelLocked(context: Context, bitmap: Bitmap): Bitmap? {
         val activeRuntime = runtime ?: synchronized(this) {
             runtime ?: createRuntime(context)?.also { runtime = it }
         } ?: return null
@@ -319,6 +325,9 @@ object TextEnhancementMaskProcessor {
             // The arena retained over 100 MB after inference in regression tests.
             // Disabling it trades a small amount of latency for stable reader memory.
             setCPUArenaAllocator(false)
+            // Pages differ in size; with the memory pattern pool ORT reuses a buffer sized
+            // for the previous shape and aborts with a Resize shape mismatch.
+            setMemoryPatternOptimization(false)
         }
         return runCatching {
             val model = context.assets.open(MODEL_ASSET).use { it.readBytes() }
