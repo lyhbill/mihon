@@ -1,6 +1,10 @@
 package eu.kanade.presentation.more.settings.screen
 
 import android.content.ActivityNotFoundException
+import android.content.Context
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import eu.kanade.tachiyomi.ui.reader.viewer.ChapterPreprocessingArtifacts
+import androidx.compose.runtime.collectAsState
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
@@ -103,9 +107,63 @@ object SettingsDataScreen : SearchableSettings {
             getStorageLocationPref(storagePreferences = storagePreferences),
             Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.pref_storage_location_info)),
 
+            getStorageManagementGroup(context),
             getBackupAndRestoreGroup(backupPreferences = backupPreferences),
             getDataGroup(),
             getExportGroup(),
+        )
+    }
+
+    @Composable
+    private fun getStorageManagementGroup(context: Context): Preference.PreferenceGroup {
+        val readerPreferences = remember { context.appGraph.readerPreferences }
+        val scope = rememberCoroutineScope()
+        val usage by produceState(initialValue = -1L) {
+            value = withContext(Dispatchers.IO) {
+                ChapterPreprocessingArtifacts.totalSize(context)
+            }
+        }
+        val limitMb by readerPreferences.buildDataLimitMb.collectAsState()
+
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.pref_category_storage_management),
+            preferenceItems = listOf(
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.buildDataLimitMb,
+                    entries = ReaderPreferences.BUILD_DATA_LIMIT_OPTIONS_MB.associateWith { mb ->
+                        if (mb == 0) {
+                            stringResource(MR.strings.unlimited)
+                        } else if (mb >= 1024) {
+                            "${mb / 1024} GB"
+                        } else {
+                            "$mb MB"
+                        }
+                    },
+                    title = stringResource(MR.strings.pref_build_data_limit),
+                    subtitle = stringResource(MR.strings.pref_build_data_limit_summary),
+                ),
+                Preference.PreferenceItem.InfoPreference(
+                    stringResource(
+                        MR.strings.pref_build_data_usage,
+                        if (usage < 0) "…" else "${usage / (1024 * 1024)} MB",
+                        if (limitMb == 0) "∞" else "$limitMb MB",
+                    ),
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.action_clear_build_data),
+                    subtitle = stringResource(MR.strings.action_clear_build_data_summary),
+                    onClick = {
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                ChapterPreprocessingArtifacts.deleteAll(context)
+                            }
+                            usage = withContext(Dispatchers.IO) {
+                                ChapterPreprocessingArtifacts.totalSize(context)
+                            }
+                        }
+                    },
+                ),
+            ),
         )
     }
 

@@ -236,6 +236,21 @@ class ReaderPreferences(
         ImageProcessing.GAMMA_DEFAULT,
     )
 
+    val superResolutionEnabled: Preference<Boolean> = preferenceStore.getBoolean(
+        "pref_super_resolution",
+        false,
+    )
+
+    val superResolutionFactor: Preference<Int> = preferenceStore.getInt(
+        "pref_super_resolution_factor",
+        SUPER_RESOLUTION_FACTOR_DEFAULT,
+    )
+
+    val buildDataLimitMb: Preference<Int> = preferenceStore.getInt(
+        "pref_build_data_limit_mb",
+        BUILD_DATA_LIMIT_DEFAULT_MB,
+    )
+
     val textEnhancement: Preference<Int> = preferenceStore.getInt(
         "pref_line_enhancement",
         ImageProcessing.TEXT_ENHANCEMENT_DEFAULT,
@@ -340,6 +355,13 @@ class ReaderPreferences(
         const val PAGER_PADDING_MIN = 0
         const val PAGER_PADDING_MAX = 20
         const val PAGER_PADDING_PERCENTAGE_DIVISOR = 200f
+
+        const val SUPER_RESOLUTION_FACTOR_DEFAULT = 2
+        const val SUPER_RESOLUTION_FACTOR_MIN = 2
+        const val SUPER_RESOLUTION_FACTOR_MAX = 2
+
+        const val BUILD_DATA_LIMIT_DEFAULT_MB = 1024
+        val BUILD_DATA_LIMIT_OPTIONS_MB = listOf(512, 1024, 2048, 5120, 0)
 
         const val PREPROCESSING_THREADS_MIN = 1
         const val PREPROCESSING_THREADS_MAX = 8

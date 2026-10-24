@@ -999,4 +999,13 @@
     <string name="pref_load_ahead_only_over_wifi">仅在 Wi-Fi 下预加载</string>
     <string name="pref_load_ahead_only_over_wifi_summary">只加载正在阅读位置附近的页面，节省移动数据</string>
     <string name="app_name">Mihon</string>
+    <string name="pref_category_storage_management">存储管理</string>
+    <string name="pref_super_resolution">超分辨率</string>
+    <string name="pref_super_resolution_summary">构建章节时放大页面，适合低分辨率扫描图（2 倍 Lanczos 重采样，无 AI 伪影）</string>
+    <string name="pref_build_data_limit">构建数据上限</string>
+    <string name="pref_build_data_limit_summary">超过上限时自动删除最旧的章节</string>
+    <string name="pref_build_data_usage">构建数据：已用 %1$s / %2$s</string>
+    <string name="action_clear_build_data">清除构建数据</string>
+    <string name="action_clear_build_data_summary">删除已生成的放大图片和文字蒙版，之后可重新构建</string>
+    <string name="unlimited">不限制</string>
 </resources>

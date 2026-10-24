@@ -221,6 +221,12 @@ object SettingsReaderScreen : SearchableSettings {
                     visible = preprocessingEnabled,
                 ),
                 Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.superResolutionEnabled,
+                    title = stringResource(MR.strings.pref_super_resolution),
+                    subtitle = stringResource(MR.strings.pref_super_resolution_summary),
+                    visible = preprocessingEnabled,
+                ),
+                Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.grayscale,
                     title = stringResource(MR.strings.pref_grayscale),
                 ),

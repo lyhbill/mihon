@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.reader.viewer
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import kotlinx.coroutines.CancellationException
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import mihon.app.di.appGraph
 import logcat.LogPriority
 import mihon.core.archive.archiveReader
 import okio.Buffer
@@ -55,11 +57,13 @@ object ChapterPreprocessingArtifacts {
             openReadOnly(file).use { database ->
                 val metadata = readMetadata(database)
                 val pageCount = metadata[KEY_PAGE_COUNT]?.toIntOrNull() ?: return@use false
+                val upscaleFactor = metadata[KEY_UPSCALE_FACTOR]?.toIntOrNull() ?: 0
                 metadata[KEY_SCHEMA]?.toIntOrNull() == DATABASE_SCHEMA &&
                     metadata[KEY_CHAPTER_ID]?.toLongOrNull() == chapterId &&
                     metadata[KEY_ALGORITHM] == TextEnhancementMaskProcessor.CACHE_ALGORITHM_VERSION &&
                     metadata[KEY_COMPLETE] == VALUE_TRUE &&
-                    outputCount(database) == pageCount
+                    outputCount(database, OUTPUT_KIND_MASK) == pageCount &&
+                    (upscaleFactor == 0 || outputCount(database, OUTPUT_KIND_UPSCALED) == pageCount)
             }
         }.getOrDefault(false)
         artifactIndex[chapterId] = ArtifactStamp(file.length(), file.lastModified(), complete)
@@ -83,7 +87,7 @@ object ChapterPreprocessingArtifacts {
                 }
                 database.rawQuery(
                     "SELECT payload FROM outputs WHERE kind = ? AND page_index = ?",
-                    arrayOf(OUTPUT_KIND, pageIndex.toString()),
+                    arrayOf(OUTPUT_KIND_MASK, pageIndex.toString()),
                 ).use { cursor ->
                     if (cursor.moveToFirst()) cursor.getBlob(0) else null
                 }
@@ -160,6 +164,85 @@ object ChapterPreprocessingArtifacts {
                 }
                 manifest.delete()
             }
+        }
+    }
+
+    /** Reads the upscaled page produced by the build pipeline, if any. */
+    fun loadUpscaledPage(context: Context, chapterId: Long, pageIndex: Int): Bitmap? {
+        val file = artifactFile(context, chapterId)
+        if (!isSQLiteDatabase(file)) return null
+        return try {
+            val payload = openReadOnly(file).use { database ->
+                database.rawQuery(
+                    "SELECT payload FROM outputs WHERE kind = ? AND page_index = ?",
+                    arrayOf(OUTPUT_KIND_UPSCALED, pageIndex.toString()),
+                ).use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getBlob(0) else null
+                }
+            } ?: return null
+            BitmapFactory.decodeByteArray(payload, 0, payload.size)
+        } catch (error: Throwable) {
+            logcat(LogPriority.WARN, error) { "Unable to read upscaled chapter page" }
+            null
+        }
+    }
+
+    /** Deletes every chapter artifact and returns how many bytes were freed. */
+    fun deleteAll(context: Context): Long {
+        val directory = artifactDirectory(context)
+        val files = directory.listFiles().orEmpty()
+        var freed = 0L
+        files.forEach { file ->
+            val length = if (file.isFile) file.length() else 0L
+            if (file.delete()) freed += length
+        }
+        artifactIndex.clear()
+        return freed
+    }
+
+    /** Total size of every chapter artifact on disk, in bytes. */
+    fun totalSize(context: Context): Long {
+        return artifactDirectory(context)
+            .listFiles { file -> file.isFile && file.extension == ARTIFACT_EXTENSION }
+            ?.sumOf(File::length)
+            ?: 0L
+    }
+
+    /**
+     * Deletes whole chapters, oldest first, until the artifact directory fits in [maxBytes].
+     * Chapters listed in [keep] (currently reading / being built) are never touched.
+     */
+    fun enforceBudget(context: Context, maxBytes: Long, keep: Set<Long> = emptySet()): Long {
+        if (maxBytes <= 0L) return 0L
+        val files = artifactDirectory(context)
+            .listFiles { file -> file.isFile && file.extension == ARTIFACT_EXTENSION }
+            ?.sortedBy(File::lastModified)
+            ?: return 0L
+        var total = files.sumOf(File::length)
+        var removed = 0L
+        for (file in files) {
+            if (total <= maxBytes) break
+            val chapterId = file.name
+                .removePrefix("chapter-")
+                .removeSuffix(".$ARTIFACT_EXTENSION")
+                .toLongOrNull()
+                ?: continue
+            if (chapterId in keep) continue
+            val length = file.length()
+            if (file.delete()) {
+                sidecarFiles(file).forEach(File::delete)
+                artifactIndex.remove(chapterId)
+                total -= length
+                removed += length
+            }
+        }
+        return removed
+    }
+
+    private fun encodeJpeg(bitmap: Bitmap): ByteArray {
+        return ByteArrayOutputStream(bitmap.byteCount / 4).use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, UPSCALED_JPEG_QUALITY, output)
+            output.toByteArray()
         }
     }
 
@@ -244,9 +327,15 @@ object ChapterPreprocessingArtifacts {
         if (file.exists() && !isSQLiteDatabase(file)) file.delete()
         artifactIndex.remove(chapterId)
 
+        val upscaleFactor = if (context.appGraph.readerPreferences.superResolutionEnabled.get()) {
+            context.appGraph.readerPreferences.superResolutionFactor.get()
+                .coerceIn(SuperResolution.MIN_FACTOR, SuperResolution.MAX_FACTOR)
+        } else {
+            0
+        }
         val database = SQLiteDatabase.openOrCreateDatabase(file, null)
         try {
-            prepareDatabase(database, chapterId, pageCount, sourceSignature)
+            prepareDatabase(database, chapterId, pageCount, sourceSignature, upscaleFactor)
             val completedPages = builtPages(database, pageCount)
             onPrepared(pageCount)
             if (completedPages.isNotEmpty()) {
@@ -266,7 +355,10 @@ object ChapterPreprocessingArtifacts {
                 onPageBuilt = onPageBuilt,
             )
 
-            if (outputCount(database) != pageCount) return false
+            val masksComplete = outputCount(database, OUTPUT_KIND_MASK) == pageCount
+            val upscaledComplete = upscaleFactor == 0 ||
+                outputCount(database, OUTPUT_KIND_UPSCALED) == pageCount
+            if (!masksComplete || !upscaledComplete) return false
             putMetadata(database, KEY_COMPLETE, VALUE_TRUE)
             artifactIndex.remove(chapterId)
             return true
@@ -288,7 +380,15 @@ object ChapterPreprocessingArtifacts {
     ) = coroutineScope {
         if (pendingPages.isEmpty()) return@coroutineScope
 
-        val workerCount = parallelism.coerceIn(MIN_PARALLELISM, MAX_PARALLELISM)
+        val upscaleFactor = if (context.appGraph.readerPreferences.superResolutionEnabled.get()) {
+            context.appGraph.readerPreferences.superResolutionFactor.get()
+                .coerceIn(SuperResolution.MIN_FACTOR, SuperResolution.MAX_FACTOR)
+        } else {
+            0
+        }
+        // Upscaling multiplies peak memory by four, so never run it in parallel.
+        val effectiveParallelism = if (upscaleFactor > 0) 1 else parallelism
+        val workerCount = effectiveParallelism.coerceIn(MIN_PARALLELISM, MAX_PARALLELISM)
             .coerceAtMost(pendingPages.size)
         val pageSources = Channel<PageSource>()
         val pageOutputs = Channel<PageOutput>(capacity = workerCount)
@@ -307,9 +407,23 @@ object ChapterPreprocessingArtifacts {
         val workers = List(workerCount) {
             launch(Dispatchers.Default) {
                 for (page in pageSources) {
-                    val mask = TextEnhancementMaskProcessor.createArtifactMask(context, page.source)
-                        ?: error("Unable to build chapter page ${page.index}")
-                    pageOutputs.send(PageOutput(page.index, compressPayload(mask)))
+                    val decoded = TextEnhancementMaskProcessor.decodePage(page.source)
+                        ?: error("Unable to decode chapter page ${page.index}")
+                    val upscaled = if (upscaleFactor > 0) {
+                        runCatching { SuperResolution.upscale(decoded, upscaleFactor) }.getOrNull()
+                    } else {
+                        null
+                    }
+                    val base = upscaled ?: decoded
+                    try {
+                        val mask = TextEnhancementMaskProcessor.createArtifactMaskFromBitmap(context, base)
+                            ?: error("Unable to build chapter page ${page.index}")
+                        val jpeg = upscaled?.let(::encodeJpeg)
+                        pageOutputs.send(PageOutput(page.index, compressPayload(mask), jpeg))
+                    } finally {
+                        upscaled?.recycle()
+                        decoded.recycle()
+                    }
                 }
             }
         }
@@ -323,7 +437,8 @@ object ChapterPreprocessingArtifacts {
 
         var completed = completedPageCount
         for (page in pageOutputs) {
-            writeOutput(database, page.index, page.payload)
+            writeOutput(database, OUTPUT_KIND_MASK, page.index, page.payload)
+            page.upscaled?.let { writeOutput(database, OUTPUT_KIND_UPSCALED, page.index, it) }
             completed++
             onPageBuilt(completed - 1, pageCount)
             _pageChanges.tryEmit(PageChange(chapterId, page.index))
@@ -337,6 +452,7 @@ object ChapterPreprocessingArtifacts {
         chapterId: Long,
         pageCount: Int,
         sourceSignature: String,
+        upscaleFactor: Int,
     ) {
         database.execSQL(
             "CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) WITHOUT ROWID",
@@ -351,6 +467,7 @@ object ChapterPreprocessingArtifacts {
             metadata[KEY_CHAPTER_ID]?.toLongOrNull() == chapterId &&
             metadata[KEY_ALGORITHM] == TextEnhancementMaskProcessor.CACHE_ALGORITHM_VERSION &&
             metadata[KEY_PAGE_COUNT]?.toIntOrNull() == pageCount &&
+            (metadata[KEY_UPSCALE_FACTOR]?.toIntOrNull() ?: 0) == upscaleFactor &&
             metadata[KEY_SOURCE] == sourceSignature
 
         database.beginTransaction()
@@ -363,6 +480,7 @@ object ChapterPreprocessingArtifacts {
                 putMetadata(database, KEY_ALGORITHM, TextEnhancementMaskProcessor.CACHE_ALGORITHM_VERSION)
                 putMetadata(database, KEY_PAGE_COUNT, pageCount.toString())
                 putMetadata(database, KEY_SOURCE, sourceSignature)
+                putMetadata(database, KEY_UPSCALE_FACTOR, upscaleFactor.toString())
             }
             putMetadata(database, KEY_COMPLETE, VALUE_FALSE)
             database.setTransactionSuccessful()
@@ -371,11 +489,11 @@ object ChapterPreprocessingArtifacts {
         }
     }
 
-    private fun writeOutput(database: SQLiteDatabase, pageIndex: Int, payload: ByteArray) {
+    private fun writeOutput(database: SQLiteDatabase, kind: String, pageIndex: Int, payload: ByteArray) {
         database.compileStatement(
             "INSERT OR REPLACE INTO outputs (kind, page_index, payload) VALUES (?, ?, ?)",
         ).use { statement ->
-            statement.bindString(1, OUTPUT_KIND)
+            statement.bindString(1, kind)
             statement.bindLong(2, pageIndex.toLong())
             statement.bindBlob(3, payload)
             statement.executeInsert()
@@ -385,7 +503,7 @@ object ChapterPreprocessingArtifacts {
     private fun builtPages(database: SQLiteDatabase, pageCount: Int): Set<Int> {
         return database.rawQuery(
             "SELECT page_index FROM outputs WHERE kind = ? AND page_index >= 0 AND page_index < ?",
-            arrayOf(OUTPUT_KIND, pageCount.toString()),
+            arrayOf(OUTPUT_KIND_MASK, pageCount.toString()),
         ).use { cursor ->
             buildSet {
                 while (cursor.moveToNext()) add(cursor.getInt(0))
@@ -393,10 +511,10 @@ object ChapterPreprocessingArtifacts {
         }
     }
 
-    private fun outputCount(database: SQLiteDatabase): Int {
+    private fun outputCount(database: SQLiteDatabase, kind: String = OUTPUT_KIND_MASK): Int {
         return database.rawQuery(
             "SELECT COUNT(*) FROM outputs WHERE kind = ?",
-            arrayOf(OUTPUT_KIND),
+            arrayOf(kind),
         ).use { cursor ->
             if (cursor.moveToFirst()) cursor.getInt(0) else 0
         }
@@ -478,16 +596,19 @@ object ChapterPreprocessingArtifacts {
     data class PageChange(val chapterId: Long, val pageIndex: Int)
 
     private data class PageSource(val index: Int, val source: Buffer)
-    private data class PageOutput(val index: Int, val payload: ByteArray)
+    private data class PageOutput(val index: Int, val payload: ByteArray, val upscaled: ByteArray?)
     private data class ArtifactStamp(val length: Long, val lastModified: Long, val complete: Boolean)
 
-    internal const val DATABASE_SCHEMA = 1
+    internal const val DATABASE_SCHEMA = 2
     internal const val ARTIFACT_EXTENSION = "ppc"
     internal const val MIN_PARALLELISM = 1
     internal const val MAX_PARALLELISM = 8
     private const val ARTIFACT_DIRECTORY = "chapter-preprocessing-v1"
-    private const val OUTPUT_KIND = "text-mask"
+    private const val UPSCALED_JPEG_QUALITY = 90
+    private const val OUTPUT_KIND_MASK = "text-mask"
+    private const val OUTPUT_KIND_UPSCALED = "upscaled-page"
     private const val KEY_SCHEMA = "schema"
+    private const val KEY_UPSCALE_FACTOR = "upscale_factor"
     private const val KEY_CHAPTER_ID = "chapter"
     private const val KEY_ALGORITHM = "algorithm"
     private const val KEY_PAGE_COUNT = "pages"

@@ -1134,4 +1134,13 @@
     <string name="donationCampaign.paragraph3">Regardless, Mihon will continue to be maintained by me and the volunteers, and it will stay open source.</string>
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
+    <string name="pref_category_storage_management">Storage management</string>
+    <string name="pref_super_resolution">Super resolution</string>
+    <string name="pref_super_resolution_summary">Upscales pages while building a chapter; best for low-resolution scans (2x Lanczos resampling, no AI artefacts)</string>
+    <string name="pref_build_data_limit">Build data limit</string>
+    <string name="pref_build_data_limit_summary">Oldest chapters are removed automatically when the limit is exceeded</string>
+    <string name="pref_build_data_usage">Build data: %1$s used of %2$s</string>
+    <string name="action_clear_build_data">Clear build data</string>
+    <string name="action_clear_build_data_summary">Deletes upscaled pages and text masks; they are rebuilt on demand</string>
+    <string name="unlimited">Unlimited</string>
 </resources>

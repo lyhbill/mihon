@@ -198,7 +198,18 @@ class PagerPageHolder(
                 } else {
                     null
                 }
-                LoadedPageImage(source, isAnimated, background)
+                val upscaled = if (isAnimated) {
+                    null
+                } else {
+                    runCatching {
+                        val chapterId = page.chapter.chapter.id ?: return@runCatching null
+                        val pageIndex = (page as? InsertPage)?.parent?.index ?: page.index
+                        ChapterPreprocessingArtifacts.loadUpscaledPage(context, chapterId, pageIndex)
+                    }.onFailure { error ->
+                        logcat(LogPriority.WARN, error) { "Unable to load the upscaled page" }
+                    }.getOrNull()
+                }
+                LoadedPageImage(source, isAnimated, background, upscaled)
             }
             withContext(Dispatchers.Main) {
                 val config = Config(
@@ -223,7 +234,12 @@ class PagerPageHolder(
                             ?.let(viewer.config.pageCropProfiles::get)
                     },
                 )
-                setImage(image.source, image.isAnimated, config)
+                val upscaled = image.upscaled
+                if (upscaled != null) {
+                    setImage(BitmapDrawable(context.resources, upscaled), config)
+                } else {
+                    setImage(image.source, image.isAnimated, config)
+                }
                 textEnhancementSupported = !image.isAnimated
                 if (!image.isAnimated) {
                     pageBackground = image.background
@@ -338,6 +354,7 @@ class PagerPageHolder(
     private data class LoadedPageImage(
         val source: BufferedSource,
         val isAnimated: Boolean,
+        val upscaled: android.graphics.Bitmap? = null,
         val background: Drawable?,
     )
 

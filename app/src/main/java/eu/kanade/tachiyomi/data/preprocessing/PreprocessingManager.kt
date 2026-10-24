@@ -314,6 +314,7 @@ class PreprocessingManager(
             store.remove(task)
             _artifactChanges.emit(setOf(task.chapter.id))
             _artifactRevision.value++
+            enforceStorageBudget()
         } catch (error: CancellationException) {
             task.state = if (getQueuedTaskOrNull(task.chapter.id) != null) {
                 PreprocessingTask.State.QUEUED
@@ -325,6 +326,20 @@ class PreprocessingManager(
         } catch (error: Throwable) {
             logcat(LogPriority.ERROR, error) { "Chapter preprocessing failed" }
             fail(task, error.message ?: "Chapter preprocessing failed")
+        }
+    }
+
+    private fun enforceStorageBudget() {
+        val limitMb = readerPreferences.buildDataLimitMb.get()
+        if (limitMb <= 0) return
+        runCatching {
+            ChapterPreprocessingArtifacts.enforceBudget(
+                context = context,
+                maxBytes = limitMb.toLong() * 1024L * 1024L,
+                keep = queueState.value.mapTo(mutableSetOf()) { it.chapter.id },
+            )
+        }.onFailure { error ->
+            logcat(LogPriority.WARN, error) { "Unable to enforce the build data budget" }
         }
     }
 

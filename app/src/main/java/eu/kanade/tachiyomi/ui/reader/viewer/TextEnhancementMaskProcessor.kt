@@ -71,25 +71,43 @@ object TextEnhancementMaskProcessor {
         return promoteToPersistentCache(context, cacheKey)
     }
 
+    /** Decodes a chapter page for the build pipeline. */
+    internal fun decodePage(source: BufferedSource): Bitmap? = decodeSampled(source)
+
+    /** Serialises an ALPHA_8 mask into the payload stored inside a chapter build artifact. */
+    internal fun encodeArtifactMask(mask: Bitmap): ByteArray {
+        return ByteArrayOutputStream(mask.byteCount + 16).use { bytes ->
+            val pixels = ByteBuffer.allocate(mask.byteCount)
+            mask.copyPixelsToBuffer(pixels)
+            DataOutputStream(bytes).use { output ->
+                output.writeInt(ARTIFACT_MASK_MAGIC)
+                output.writeInt(mask.width)
+                output.writeInt(mask.height)
+                output.writeInt(pixels.position())
+                output.write(pixels.array(), 0, pixels.position())
+            }
+            bytes.toByteArray()
+        }
+    }
+
     /** Generates the full-quality mask payload stored inside a chapter build artifact. */
     internal suspend fun createArtifactMask(
         context: Context,
         source: BufferedSource,
     ): ByteArray? {
         val mask = detect(context.applicationContext, source, cropBorders = false) ?: return null
-        try {
-            return ByteArrayOutputStream(mask.byteCount + 16).use { bytes ->
-                val pixels = ByteBuffer.allocate(mask.byteCount)
-                mask.copyPixelsToBuffer(pixels)
-                DataOutputStream(bytes).use { output ->
-                    output.writeInt(ARTIFACT_MASK_MAGIC)
-                    output.writeInt(mask.width)
-                    output.writeInt(mask.height)
-                    output.writeInt(pixels.position())
-                    output.write(pixels.array(), 0, pixels.position())
-                }
-                bytes.toByteArray()
-            }
+        return try {
+            encodeArtifactMask(mask)
+        } finally {
+            mask.recycle()
+        }
+    }
+
+    /** Builds a mask from a bitmap that is already decoded (and possibly upscaled). */
+    internal fun createArtifactMaskFromBitmap(context: Context, bitmap: Bitmap): ByteArray? {
+        val mask = runModel(context.applicationContext, bitmap) ?: return null
+        return try {
+            encodeArtifactMask(mask)
         } finally {
             mask.recycle()
         }
