@@ -118,7 +118,7 @@ object SettingsDataScreen : SearchableSettings {
     private fun getStorageManagementGroup(context: Context): Preference.PreferenceGroup {
         val readerPreferences = remember { context.appGraph.readerPreferences }
         val scope = rememberCoroutineScope()
-        val usage by produceState(initialValue = -1L) {
+        var usage by produceState(initialValue = -1L) {
             value = withContext(Dispatchers.IO) {
                 ChapterPreprocessingArtifacts.totalSize(context)
             }

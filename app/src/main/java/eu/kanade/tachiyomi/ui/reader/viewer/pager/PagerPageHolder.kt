@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.reader.viewer.pager
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import androidx.core.view.isVisible
@@ -209,7 +210,7 @@ class PagerPageHolder(
                         logcat(LogPriority.WARN, error) { "Unable to load the upscaled page" }
                     }.getOrNull()
                 }
-                LoadedPageImage(source, isAnimated, background, upscaled)
+                LoadedPageImage(source, isAnimated, upscaled, background)
             }
             withContext(Dispatchers.Main) {
                 val config = Config(
