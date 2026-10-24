@@ -86,6 +86,10 @@
 # KotlinX Datetime
 -keep,allowoptimization class kotlinx.datetime.** { public protected *; }
 
+# ONNX Runtime resolves its exception classes from JNI; shrinking them makes
+# checkOrtStatus() abort with "JNI DETECTED ERROR IN APPLICATION: mid == null".
+-keep class ai.onnxruntime.** { *; }
+
 # Methods called by Shizuku only
 -keepclassmembers class mihon.app.shizuku.ShellInterface {
     public <init>();
