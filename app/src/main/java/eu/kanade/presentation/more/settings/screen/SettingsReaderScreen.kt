@@ -164,7 +164,9 @@ object SettingsReaderScreen : SearchableSettings {
         val preprocessingEnabled by readerPreferences.preprocessingEnabled.collectAsState()
         // Read the stored value directly: a collected flow can still hold the value from the
         // previous composition when the screen is re-entered.
-        val buildEnabled = readerPreferences.preprocessingEnabled.get()
+        // Combine both: the collected flow updates the rows the moment the switch flips,
+        // the stored value makes sure a freshly entered screen is never stale.
+        val buildEnabled = preprocessingEnabled || readerPreferences.preprocessingEnabled.get()
         val preprocessingThreadsPref = readerPreferences.preprocessingThreads
 
         return Preference.PreferenceGroup(
