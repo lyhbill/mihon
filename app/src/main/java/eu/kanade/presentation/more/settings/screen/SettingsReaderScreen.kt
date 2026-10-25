@@ -196,7 +196,6 @@ object SettingsReaderScreen : SearchableSettings {
                     preference = readerPreferences.automaticPreprocessing,
                     title = stringResource(MR.strings.pref_automatic_preprocessing),
                     subtitle = stringResource(MR.strings.pref_automatic_preprocessing_summary),
-                    visible = preprocessingEnabled,
                 ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = preprocessingThreadsPref,
@@ -205,7 +204,6 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_preprocessing_threads),
                     subtitle = stringResource(MR.strings.pref_preprocessing_threads_summary),
                     valueText = { it.toString() },
-                    visible = preprocessingEnabled,
                 ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = textEnhancementPref,
@@ -219,13 +217,11 @@ object SettingsReaderScreen : SearchableSettings {
                             it.toString()
                         }
                     },
-                    visible = preprocessingEnabled,
                 ),
                 Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.superResolutionEnabled,
                     title = stringResource(MR.strings.pref_super_resolution),
                     subtitle = stringResource(MR.strings.pref_super_resolution_summary),
-                    visible = preprocessingEnabled,
                 ),
                 Preference.PreferenceItem.ListPreference(
                     preference = readerPreferences.superResolutionEngine,
@@ -234,7 +230,6 @@ object SettingsReaderScreen : SearchableSettings {
                     },
                     title = stringResource(MR.strings.pref_super_resolution_engine),
                     subtitle = stringResource(MR.strings.pref_super_resolution_engine_summary),
-                    visible = preprocessingEnabled && superResolutionEnabled,
                 ),
                 Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.grayscale,
