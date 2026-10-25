@@ -79,7 +79,7 @@ object OnnxSuperResolution {
         val targetFactor = factor.coerceIn(2, MODEL_SCALE)
         val tile = active.tile
         val stride = (tile - OVERLAP).coerceAtLeast(1)
-        val outSide = tile * MODEL_SCALE
+        val outSide = active.outSide
         val output = Bitmap.createBitmap(width * targetFactor, height * targetFactor, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
@@ -224,7 +224,19 @@ object OnnxSuperResolution {
             val inputType = info?.type ?: OnnxJavaType.FLOAT
             val shape = info?.shape ?: longArrayOf(-1, 3, -1, -1)
             val tile = shape.getOrNull(2)?.takeIf { it > 0 }?.toInt() ?: DEFAULT_TILE
-            return Runtime(environment, session, options, inputName, inputType, tile).also {
+            // Probe once to learn the real output size (waifu2x networks are not exactly 2x).
+            val probeShape = longArrayOf(1, 3, tile.toLong(), tile.toLong())
+            val probeTensor = if (inputType == OnnxJavaType.UINT8) {
+                OnnxTensor.createTensor(environment, java.nio.ByteBuffer.allocateDirect(3 * tile * tile), probeShape, OnnxJavaType.UINT8)
+            } else {
+                OnnxTensor.createTensor(environment, java.nio.FloatBuffer.allocate(3 * tile * tile), probeShape)
+            }
+            val outSide = probeTensor.use {
+                session.run(mapOf(inputName to it)).use { r ->
+                    (r[0] as OnnxTensor).info.shape.getOrNull(2)?.toInt() ?: (tile * MODEL_SCALE)
+                }
+            }
+            return Runtime(environment, session, options, inputName, inputType, tile, outSide).also {
                 runtime = it
             }
         }
@@ -246,5 +258,6 @@ object OnnxSuperResolution {
         val inputName: String,
         val inputType: OnnxJavaType,
         val tile: Int,
+        val outSide: Int,
     )
 }
