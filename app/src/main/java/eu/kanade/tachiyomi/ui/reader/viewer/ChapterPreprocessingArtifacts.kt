@@ -332,7 +332,7 @@ object ChapterPreprocessingArtifacts {
         if (file.exists() && !isSQLiteDatabase(file)) file.delete()
         artifactIndex.remove(chapterId)
 
-        val upscaleFactor = if (context.appGraph.readerPreferences.superResolutionEnabled.get()) {
+        val upscaleFactor = if ((context.appGraph.readerPreferences.enhancementMode.get() != ReaderPreferences.EnhancementMode.OFF)) {
             context.appGraph.readerPreferences.superResolutionFactor.get()
                 .coerceIn(SuperResolution.MIN_FACTOR, SuperResolution.MAX_FACTOR)
         } else {
@@ -385,7 +385,7 @@ object ChapterPreprocessingArtifacts {
     ) = coroutineScope {
         if (pendingPages.isEmpty()) return@coroutineScope
 
-        val upscaleFactor = if (context.appGraph.readerPreferences.superResolutionEnabled.get()) {
+        val upscaleFactor = if ((context.appGraph.readerPreferences.enhancementMode.get() != ReaderPreferences.EnhancementMode.OFF)) {
             context.appGraph.readerPreferences.superResolutionFactor.get()
                 .coerceIn(SuperResolution.MIN_FACTOR, SuperResolution.MAX_FACTOR)
         } else {
