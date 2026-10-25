@@ -1025,4 +1025,6 @@
     <string name="refresh_tracker_error">%1$s 重新整理失敗：%2$s</string>
     <string name="refresh_tracker_profile">重新整理追蹤器個人資料</string>
     <string name="refresh_tracker_success">%s 個人資料已重新整理</string>
+    <string name="pref_inference_threads">AI 推理執行緒數</string>
+    <string name="pref_inference_threads_summary">每次推理使用的 CPU 執行緒數（1–4），僅影響執行 AI 模型的建構</string>
 </resources>

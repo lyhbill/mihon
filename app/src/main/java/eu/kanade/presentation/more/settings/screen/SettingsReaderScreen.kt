@@ -223,6 +223,13 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_super_resolution),
                     subtitle = stringResource(MR.strings.pref_super_resolution_summary),
                 ),
+                Preference.PreferenceItem.SliderPreference(
+                    preference = readerPreferences.inferenceThreads,
+                    valueRange = ReaderPreferences.INFERENCE_THREADS_MIN..ReaderPreferences.INFERENCE_THREADS_MAX,
+                    title = stringResource(MR.strings.pref_inference_threads),
+                    subtitle = stringResource(MR.strings.pref_inference_threads_summary),
+                    valueText = { it.toString() },
+                ),
                 Preference.PreferenceItem.ListPreference(
                     preference = readerPreferences.superResolutionEngine,
                     entries = ReaderPreferences.SuperResolutionEngine.entries.associateWith {

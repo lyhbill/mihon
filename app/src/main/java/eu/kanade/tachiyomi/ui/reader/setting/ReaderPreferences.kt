@@ -251,6 +251,11 @@ class ReaderPreferences(
         SUPER_RESOLUTION_FACTOR_DEFAULT,
     )
 
+    val inferenceThreads: Preference<Int> = preferenceStore.getInt(
+        "pref_inference_threads",
+        INFERENCE_THREADS_DEFAULT,
+    )
+
     val buildDataLimitMb: Preference<Int> = preferenceStore.getInt(
         "pref_build_data_limit_mb",
         BUILD_DATA_LIMIT_DEFAULT_MB,
@@ -365,6 +370,10 @@ class ReaderPreferences(
         const val PAGER_PADDING_MIN = 0
         const val PAGER_PADDING_MAX = 20
         const val PAGER_PADDING_PERCENTAGE_DIVISOR = 200f
+
+        const val INFERENCE_THREADS_MIN = 1
+        const val INFERENCE_THREADS_MAX = 4
+        const val INFERENCE_THREADS_DEFAULT = 2
 
         const val SUPER_RESOLUTION_FACTOR_DEFAULT = 2
         const val SUPER_RESOLUTION_FACTOR_MIN = 2

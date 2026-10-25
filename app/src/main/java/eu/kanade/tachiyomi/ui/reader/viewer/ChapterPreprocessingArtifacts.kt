@@ -240,11 +240,15 @@ object ChapterPreprocessingArtifacts {
         return removed
     }
 
-    private fun encodeJpeg(bitmap: Bitmap): ByteArray {
-        return ByteArrayOutputStream(bitmap.byteCount / 4).use { output ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, UPSCALED_JPEG_QUALITY, output)
-            output.toByteArray()
+    private fun encodeUpscaledPage(bitmap: Bitmap): ByteArray {
+        // Lossy WebP is roughly 30-40% smaller than JPEG at comparable quality.
+        val webp = ByteArrayOutputStream(bitmap.byteCount / 8)
+        if (bitmap.compress(Bitmap.CompressFormat.WEBP, UPSCALED_PAGE_QUALITY, webp)) {
+            return webp.toByteArray()
         }
+        val jpeg = ByteArrayOutputStream(bitmap.byteCount / 4)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, UPSCALED_PAGE_QUALITY, jpeg)
+        return jpeg.toByteArray()
     }
 
     internal fun artifactFile(context: Context, chapterId: Long): File {
@@ -431,7 +435,7 @@ object ChapterPreprocessingArtifacts {
                     try {
                         val mask = TextEnhancementMaskProcessor.createArtifactMaskFromBitmap(context, base)
                             ?: error("Unable to build chapter page ${page.index}")
-                        val jpeg = upscaled?.let(::encodeJpeg)
+                        val jpeg = upscaled?.let(::encodeUpscaledPage)
                         pageOutputs.send(PageOutput(page.index, compressPayload(mask), jpeg))
                     } finally {
                         upscaled?.recycle()
@@ -618,7 +622,7 @@ object ChapterPreprocessingArtifacts {
     internal const val MAX_PARALLELISM = 8
     internal const val MAX_PARALLELISM_UPSCALING = 4
     private const val ARTIFACT_DIRECTORY = "chapter-preprocessing-v1"
-    private const val UPSCALED_JPEG_QUALITY = 90
+    private const val UPSCALED_PAGE_QUALITY = 85
     private const val OUTPUT_KIND_MASK = "text-mask"
     private const val OUTPUT_KIND_UPSCALED = "upscaled-page"
     private const val KEY_SCHEMA = "schema"

@@ -336,7 +336,9 @@ object TextEnhancementMaskProcessor {
     private fun createRuntime(context: Context): Runtime? {
         val environment = OrtEnvironment.getEnvironment()
         val options = OrtSession.SessionOptions().apply {
-            setIntraOpNumThreads(INFERENCE_THREADS)
+            setIntraOpNumThreads(
+                context.appGraph.readerPreferences.inferenceThreads.get().coerceIn(1, 4),
+            )
             setInterOpNumThreads(1)
             setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
             addConfigEntry("session.intra_op.allow_spinning", "0")

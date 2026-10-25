@@ -10,6 +10,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import mihon.app.di.appGraph
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import java.io.File
@@ -172,7 +173,9 @@ object OnnxSuperResolution {
 
             val environment = OrtEnvironment.getEnvironment()
             val options = OrtSession.SessionOptions().apply {
-                setIntraOpNumThreads(0)
+                setIntraOpNumThreads(
+                    context.appGraph.readerPreferences.inferenceThreads.get().coerceIn(1, 4),
+                )
                 setInterOpNumThreads(1)
                 setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
                 setCPUArenaAllocator(false)

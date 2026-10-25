@@ -1152,4 +1152,6 @@
     <string name="pref_auto_check_updates_summary">Queries mihon.app about once a day; off by default in this build</string>
     <string name="pref_chapter_cache_limit">Chapter cache limit</string>
     <string name="pref_chapter_cache_limit_summary">Cached reader pages; the least recently used chapters are dropped when exceeded</string>
+    <string name="pref_inference_threads">AI inference threads</string>
+    <string name="pref_inference_threads_summary">CPU threads used per inference session (1-4); only affects builds that run AI models</string>
 </resources>
