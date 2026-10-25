@@ -241,11 +241,6 @@ class ReaderPreferences(
         false,
     )
 
-    val superResolutionEngine: Preference<SuperResolutionEngine> = preferenceStore.getEnum(
-        "pref_super_resolution_engine",
-        SuperResolutionEngine.RESAMPLE,
-    )
-
     val superResolutionFactor: Preference<Int> = preferenceStore.getInt(
         "pref_super_resolution_factor",
         SUPER_RESOLUTION_FACTOR_DEFAULT,
@@ -324,11 +319,6 @@ class ReaderPreferences(
         BLACK,
         WHITE,
         WHITE_BLACK,
-    }
-
-    enum class SuperResolutionEngine(val titleRes: StringResource) {
-        RESAMPLE(MR.strings.super_resolution_engine_resample),
-        AI(MR.strings.super_resolution_engine_ai),
     }
 
     enum class WaterRippleSpeed(val titleRes: StringResource, val commandFlag: Int) {

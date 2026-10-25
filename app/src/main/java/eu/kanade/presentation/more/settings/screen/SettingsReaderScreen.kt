@@ -162,7 +162,6 @@ object SettingsReaderScreen : SearchableSettings {
         val imageGammaPref = readerPreferences.imageGamma
         val textEnhancementPref = readerPreferences.textEnhancement
         val preprocessingEnabled by readerPreferences.preprocessingEnabled.collectAsState()
-        val superResolutionEnabled by readerPreferences.superResolutionEnabled.collectAsState()
         val preprocessingThreadsPref = readerPreferences.preprocessingThreads
 
         return Preference.PreferenceGroup(
@@ -229,14 +228,6 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_inference_threads),
                     subtitle = stringResource(MR.strings.pref_inference_threads_summary),
                     valueText = { it.toString() },
-                ),
-                Preference.PreferenceItem.ListPreference(
-                    preference = readerPreferences.superResolutionEngine,
-                    entries = ReaderPreferences.SuperResolutionEngine.entries.associateWith {
-                        stringResource(it.titleRes)
-                    },
-                    title = stringResource(MR.strings.pref_super_resolution_engine),
-                    subtitle = stringResource(MR.strings.pref_super_resolution_engine_summary),
                 ),
                 Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.grayscale,
