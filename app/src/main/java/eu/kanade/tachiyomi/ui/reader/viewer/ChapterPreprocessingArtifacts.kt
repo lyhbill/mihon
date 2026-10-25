@@ -366,7 +366,6 @@ object ChapterPreprocessingArtifacts {
             val builtUpscaled = outputCount(database, OUTPUT_KIND_UPSCALED)
             val builtPages = if (upscaleFactor > 0) builtUpscaled else builtMasks
             if (builtPages <= 0) return false
-            pageFailures = pageFailures.sorted()
             if (builtPages < pageCount) {
                 putMetadata(database, KEY_PARTIAL, (pageCount - builtPages).toString())
             }
@@ -474,7 +473,7 @@ object ChapterPreprocessingArtifacts {
 
         var completed = completedPageCount
         for (page in pageOutputs) {
-            writeOutput(database, OUTPUT_KIND_MASK, page.index, page.payload)
+            page.payload?.let { writeOutput(database, OUTPUT_KIND_MASK, page.index, it) }
             page.upscaled?.let { writeOutput(database, OUTPUT_KIND_UPSCALED, page.index, it) }
             completed++
             onPageBuilt(completed - 1, pageCount)
@@ -633,7 +632,7 @@ object ChapterPreprocessingArtifacts {
     data class PageChange(val chapterId: Long, val pageIndex: Int)
 
     private data class PageSource(val index: Int, val source: Buffer)
-    private data class PageOutput(val index: Int, val payload: ByteArray, val upscaled: ByteArray?)
+    private data class PageOutput(val index: Int, val payload: ByteArray?, val upscaled: ByteArray?)
     private data class ArtifactStamp(val length: Long, val lastModified: Long, val complete: Boolean)
 
     internal const val DATABASE_SCHEMA = 2
