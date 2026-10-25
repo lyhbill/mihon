@@ -57,15 +57,28 @@ object ChapterPreprocessingArtifacts {
         val complete = runCatching {
             openReadOnly(file).use { database ->
                 val metadata = readMetadata(database)
-                val pageCount = metadata[KEY_PAGE_COUNT]?.toIntOrNull() ?: return@use false
-                val upscaleFactor = metadata[KEY_UPSCALE_FACTOR]?.toIntOrNull() ?: 0
-                metadata[KEY_SCHEMA]?.toIntOrNull() == DATABASE_SCHEMA &&
-                    metadata[KEY_CHAPTER_ID]?.toLongOrNull() == chapterId &&
-                    metadata[KEY_ALGORITHM] == TextEnhancementMaskProcessor.CACHE_ALGORITHM_VERSION &&
-                    metadata[KEY_COMPLETE] == VALUE_TRUE &&
-                    outputCount(database, OUTPUT_KIND_MASK) > 0 &&
-                    true
+                val pageCount = metadata[KEY_PAGE_COUNT]?.toIntOrNull() ?: 0
+                val masks = outputCount(database, OUTPUT_KIND_MASK)
+                val schemaOk = metadata[KEY_SCHEMA]?.toIntOrNull() == DATABASE_SCHEMA
+                val chapterOk = metadata[KEY_CHAPTER_ID]?.toLongOrNull() == chapterId
+                val algorithmOk = metadata[KEY_ALGORITHM] == TextEnhancementMaskProcessor.CACHE_ALGORITHM_VERSION
+                val markedComplete = metadata[KEY_COMPLETE] == VALUE_TRUE
+                // Tolerant: if every page already has a mask the artifact is usable even when the
+                // completion flag was lost, and a partial build is usable as soon as it has masks.
+                val hasUsableMasks = masks > 0 && (markedComplete || masks >= pageCount)
+                val usable = schemaOk && chapterOk && algorithmOk && hasUsableMasks
+                if (!usable) {
+                    logcat(LogPriority.WARN) {
+                        "Artifact not ready for chapter " + chapterId +
+                            ": schema=" + schemaOk + " chapter=" + chapterOk +
+                            " algorithm=" + algorithmOk + " complete=" + markedComplete +
+                            " masks=" + masks + " pages=" + pageCount
+                    }
+                }
+                usable
             }
+        }.onFailure { error ->
+            logcat(LogPriority.WARN, error) { "Unable to read artifact state for chapter " + chapterId }
         }.getOrDefault(false)
         artifactIndex[chapterId] = ArtifactStamp(file.length(), file.lastModified(), complete)
         return complete
