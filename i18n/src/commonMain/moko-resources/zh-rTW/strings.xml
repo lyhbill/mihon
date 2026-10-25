@@ -1027,4 +1027,11 @@
     <string name="refresh_tracker_success">%s 個人資料已重新整理</string>
     <string name="pref_inference_threads">AI 推理執行緒數</string>
     <string name="pref_inference_threads_summary">每次推理使用的 CPU 執行緒數（1–4），僅影響執行 AI 模型的建構</string>
+    <string name="pref_enhancement_mode">頁面增強</string>
+    <string name="pref_enhancement_mode_summary">銳化不改變尺寸；放大用 Lanczos 重取樣把頁面放大到 2 倍</string>
+    <string name="enhancement_mode_off">關閉</string>
+    <string name="enhancement_mode_sharpen">銳化（不佔額外空間）</string>
+    <string name="enhancement_mode_upscale">放大 2 倍（Lanczos）</string>
+    <string name="pref_enhance_only_low_res">僅增強低解析頁面</string>
+    <string name="pref_enhance_only_low_res_summary">短邊已達 800 像素的頁面直接跳過</string>
 </resources>

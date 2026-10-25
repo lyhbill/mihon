@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import mihon.app.di.appGraph
 import logcat.LogPriority
 import mihon.core.archive.archiveReader
@@ -417,9 +418,16 @@ object ChapterPreprocessingArtifacts {
                 for (page in pageSources) {
                     val decoded = TextEnhancementMaskProcessor.decodePage(page.source)
                         ?: error("Unable to decode chapter page ${page.index}")
-                    val upscaled = if (upscaleFactor > 0) {
+                    val mode = context.appGraph.readerPreferences.enhancementMode.get()
+                    val onlyLowRes = context.appGraph.readerPreferences.enhanceOnlyLowRes.get()
+                    val lowRes = minOf(decoded.width, decoded.height) < LOW_RES_THRESHOLD
+                    val upscaled = if (upscaleFactor > 0 && (!onlyLowRes || lowRes)) {
                         runCatching {
-                            SuperResolution.upscale(decoded, upscaleFactor)
+                            if (mode == ReaderPreferences.EnhancementMode.SHARPEN) {
+                                SuperResolution.sharpen(decoded)
+                            } else {
+                                SuperResolution.upscale(decoded, upscaleFactor)
+                            }
                         }.getOrNull()
                     } else {
                         null
@@ -616,6 +624,7 @@ object ChapterPreprocessingArtifacts {
     internal const val MAX_PARALLELISM_UPSCALING = 4
     private const val ARTIFACT_DIRECTORY = "chapter-preprocessing-v1"
     private const val UPSCALED_PAGE_QUALITY = 85
+    private const val LOW_RES_THRESHOLD = 800
     private const val OUTPUT_KIND_MASK = "text-mask"
     private const val OUTPUT_KIND_UPSCALED = "upscaled-page"
     private const val KEY_SCHEMA = "schema"

@@ -1154,4 +1154,11 @@
     <string name="pref_chapter_cache_limit_summary">Cached reader pages; the least recently used chapters are dropped when exceeded</string>
     <string name="pref_inference_threads">AI inference threads</string>
     <string name="pref_inference_threads_summary">CPU threads used per inference session (1-4); only affects builds that run AI models</string>
+    <string name="pref_enhancement_mode">Page enhancement</string>
+    <string name="pref_enhancement_mode_summary">Sharpening keeps the original size; upscaling doubles the page with Lanczos resampling</string>
+    <string name="enhancement_mode_off">Off</string>
+    <string name="enhancement_mode_sharpen">Sharpen (no extra space)</string>
+    <string name="enhancement_mode_upscale">Upscale 2x (Lanczos)</string>
+    <string name="pref_enhance_only_low_res">Only enhance low-resolution pages</string>
+    <string name="pref_enhance_only_low_res_summary">Skips pages whose short side is already 800 px or larger</string>
 </resources>

@@ -217,10 +217,18 @@ object SettingsReaderScreen : SearchableSettings {
                         }
                     },
                 ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.enhancementMode,
+                    entries = ReaderPreferences.EnhancementMode.entries.associateWith {
+                        stringResource(it.titleRes)
+                    },
+                    title = stringResource(MR.strings.pref_enhancement_mode),
+                    subtitle = stringResource(MR.strings.pref_enhancement_mode_summary),
+                ),
                 Preference.PreferenceItem.SwitchPreference(
-                    preference = readerPreferences.superResolutionEnabled,
-                    title = stringResource(MR.strings.pref_super_resolution),
-                    subtitle = stringResource(MR.strings.pref_super_resolution_summary),
+                    preference = readerPreferences.enhanceOnlyLowRes,
+                    title = stringResource(MR.strings.pref_enhance_only_low_res),
+                    subtitle = stringResource(MR.strings.pref_enhance_only_low_res_summary),
                 ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = readerPreferences.inferenceThreads,

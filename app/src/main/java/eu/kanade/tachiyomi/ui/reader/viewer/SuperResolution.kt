@@ -129,4 +129,42 @@ object SuperResolution {
     }
 
     private class Tap(val start: Int, val weights: DoubleArray)
+
+    /** Unsharp mask: crisper strokes without changing the pixel count. */
+    fun sharpen(source: Bitmap, amount: Float = 0.6f): Bitmap {
+        val width = source.width
+        val height = source.height
+        val pixels = IntArray(width * height)
+        source.getPixels(pixels, 0, width, 0, 0, width, height)
+        val output = IntArray(width * height)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val index = y * width + x
+                val center = pixels[index]
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                for (dy in -1..1) {
+                    val sy = (y + dy).coerceIn(0, height - 1)
+                    for (dx in -1..1) {
+                        val sx = (x + dx).coerceIn(0, width - 1)
+                        val c = pixels[sy * width + sx]
+                        rSum += (c shr 16) and 0xFF
+                        gSum += (c shr 8) and 0xFF
+                        bSum += c and 0xFF
+                    }
+                }
+                val r = (center shr 16) and 0xFF
+                val g = (center shr 8) and 0xFF
+                val b = center and 0xFF
+                val nr = (r + amount * (r - rSum / 9f)).toInt().coerceIn(0, 255)
+                val ng = (g + amount * (g - gSum / 9f)).toInt().coerceIn(0, 255)
+                val nb = (b + amount * (b - bSum / 9f)).toInt().coerceIn(0, 255)
+                output[index] = ((center shr 24) shl 24) or (nr shl 16) or (ng shl 8) or nb
+            }
+        }
+        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
+            setPixels(output, 0, width, 0, 0, width, height)
+        }
+    }
 }

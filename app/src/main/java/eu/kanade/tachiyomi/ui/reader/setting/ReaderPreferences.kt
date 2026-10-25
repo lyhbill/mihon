@@ -236,9 +236,14 @@ class ReaderPreferences(
         ImageProcessing.GAMMA_DEFAULT,
     )
 
-    val superResolutionEnabled: Preference<Boolean> = preferenceStore.getBoolean(
-        "pref_super_resolution",
-        false,
+    val enhancementMode: Preference<EnhancementMode> = preferenceStore.getEnum(
+        "pref_enhancement_mode",
+        EnhancementMode.UPSCALE,
+    )
+
+    val enhanceOnlyLowRes: Preference<Boolean> = preferenceStore.getBoolean(
+        "pref_enhance_only_low_res",
+        true,
     )
 
     val superResolutionFactor: Preference<Int> = preferenceStore.getInt(
@@ -319,6 +324,12 @@ class ReaderPreferences(
         BLACK,
         WHITE,
         WHITE_BLACK,
+    }
+
+    enum class EnhancementMode(val titleRes: StringResource) {
+        OFF(MR.strings.enhancement_mode_off),
+        SHARPEN(MR.strings.enhancement_mode_sharpen),
+        UPSCALE(MR.strings.enhancement_mode_upscale),
     }
 
     enum class WaterRippleSpeed(val titleRes: StringResource, val commandFlag: Int) {

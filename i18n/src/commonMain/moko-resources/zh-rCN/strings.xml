@@ -1034,4 +1034,11 @@
     <string name="update_check_skip_title">跳过 %s？</string>
     <string name="pref_inference_threads">AI 推理线程数</string>
     <string name="pref_inference_threads_summary">每次推理使用的 CPU 线程数（1–4），仅影响运行 AI 模型的构建</string>
+    <string name="pref_enhancement_mode">页面增强</string>
+    <string name="pref_enhancement_mode_summary">锐化不改变尺寸；放大用 Lanczos 重采样把页面放大到 2 倍</string>
+    <string name="enhancement_mode_off">关闭</string>
+    <string name="enhancement_mode_sharpen">锐化（不占额外空间）</string>
+    <string name="enhancement_mode_upscale">放大 2 倍（Lanczos）</string>
+    <string name="pref_enhance_only_low_res">仅增强低清页面</string>
+    <string name="pref_enhance_only_low_res_summary">短边已达到 800 像素的页面直接跳过</string>
 </resources>
