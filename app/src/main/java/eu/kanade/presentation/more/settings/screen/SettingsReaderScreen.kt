@@ -162,6 +162,9 @@ object SettingsReaderScreen : SearchableSettings {
         val imageGammaPref = readerPreferences.imageGamma
         val textEnhancementPref = readerPreferences.textEnhancement
         val preprocessingEnabled by readerPreferences.preprocessingEnabled.collectAsState()
+        // Read the stored value directly: a collected flow can still hold the value from the
+        // previous composition when the screen is re-entered.
+        val buildEnabled = readerPreferences.preprocessingEnabled.get()
         val preprocessingThreadsPref = readerPreferences.preprocessingThreads
 
         return Preference.PreferenceGroup(
@@ -195,6 +198,7 @@ object SettingsReaderScreen : SearchableSettings {
                     preference = readerPreferences.automaticPreprocessing,
                     title = stringResource(MR.strings.pref_automatic_preprocessing),
                     subtitle = stringResource(MR.strings.pref_automatic_preprocessing_summary),
+                    visible = buildEnabled,
                 ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = preprocessingThreadsPref,
@@ -203,6 +207,7 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_preprocessing_threads),
                     subtitle = stringResource(MR.strings.pref_preprocessing_threads_summary),
                     valueText = { it.toString() },
+                    visible = buildEnabled,
                 ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = textEnhancementPref,
@@ -216,6 +221,7 @@ object SettingsReaderScreen : SearchableSettings {
                             it.toString()
                         }
                     },
+                    visible = buildEnabled,
                 ),
                 Preference.PreferenceItem.ListPreference(
                     preference = readerPreferences.enhancementMode,
@@ -224,11 +230,13 @@ object SettingsReaderScreen : SearchableSettings {
                     },
                     title = stringResource(MR.strings.pref_enhancement_mode),
                     subtitle = stringResource(MR.strings.pref_enhancement_mode_summary),
+                    visible = buildEnabled,
                 ),
                 Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.enhanceOnlyLowRes,
                     title = stringResource(MR.strings.pref_enhance_only_low_res),
                     subtitle = stringResource(MR.strings.pref_enhance_only_low_res_summary),
+                    visible = buildEnabled,
                 ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = readerPreferences.inferenceThreads,
@@ -236,6 +244,7 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_inference_threads),
                     subtitle = stringResource(MR.strings.pref_inference_threads_summary),
                     valueText = { it.toString() },
+                    visible = buildEnabled,
                 ),
                 Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.grayscale,
