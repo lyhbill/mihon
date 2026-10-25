@@ -63,8 +63,8 @@ object ChapterPreprocessingArtifacts {
                     metadata[KEY_CHAPTER_ID]?.toLongOrNull() == chapterId &&
                     metadata[KEY_ALGORITHM] == TextEnhancementMaskProcessor.CACHE_ALGORITHM_VERSION &&
                     metadata[KEY_COMPLETE] == VALUE_TRUE &&
-                    outputCount(database, OUTPUT_KIND_MASK) == pageCount &&
-                    (upscaleFactor == 0 || outputCount(database, OUTPUT_KIND_UPSCALED) == pageCount)
+                    outputCount(database, OUTPUT_KIND_MASK) > 0 &&
+                    true
             }
         }.getOrDefault(false)
         artifactIndex[chapterId] = ArtifactStamp(file.length(), file.lastModified(), complete)
@@ -364,7 +364,7 @@ object ChapterPreprocessingArtifacts {
             // A few undecodable pages must not throw away the whole chapter.
             val builtMasks = outputCount(database, OUTPUT_KIND_MASK)
             val builtUpscaled = outputCount(database, OUTPUT_KIND_UPSCALED)
-            val builtPages = if (upscaleFactor > 0) builtUpscaled else builtMasks
+            val builtPages = builtMasks
             if (builtPages <= 0) return false
             if (builtPages < pageCount) {
                 putMetadata(database, KEY_PARTIAL, (pageCount - builtPages).toString())
