@@ -1,6 +1,6 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
-import ai.onnxruntime.NodeInfo
+import ai.onnxruntime.TensorInfo
 import ai.onnxruntime.OnnxJavaType
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
@@ -212,7 +212,7 @@ object OnnxSuperResolution {
             }
             val session = environment.createSession(modelFile.absolutePath, options)
             val inputName = session.inputNames.first()
-            val info = session.inputInfo[inputName]?.info as? NodeInfo.TensorInfo
+            val info = session.inputInfo[inputName]?.info as? TensorInfo
             val inputType = info?.type ?: OnnxJavaType.FLOAT
             val shape = info?.shape ?: longArrayOf(-1, 3, -1, -1)
             val tile = shape.getOrNull(2)?.takeIf { it > 0 }?.toInt() ?: DEFAULT_TILE

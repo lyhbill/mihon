@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import mihon.app.di.appGraph
 import logcat.LogPriority
 import okio.BufferedSource
 import tachiyomi.core.common.util.system.logcat
