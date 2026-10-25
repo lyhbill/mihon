@@ -135,7 +135,7 @@ private fun PreprocessingTaskItem(task: PreprocessingTask, onCancel: () -> Unit)
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                if (state == PreprocessingTask.State.ERROR && !error.isNullOrBlank()) {
+                if (!error.isNullOrBlank()) {
                     Text(
                         text = error.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,

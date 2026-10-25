@@ -27,6 +27,11 @@ class PreprocessingTask(
             _error.value = value
         }
 
+    /** Records a non-fatal notice (e.g. skipped pages) without changing the state. */
+    fun note(reason: String?) {
+        error = reason
+    }
+
     fun fail(reason: String) {
         error = reason
         state = State.ERROR

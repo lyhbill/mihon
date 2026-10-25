@@ -302,6 +302,8 @@ class PreprocessingManager(
                     _taskEvents.tryEmit(task)
                 },
             )
+            val skipped = ChapterPreprocessingArtifacts.lastPageFailures
+            task.note(if (skipped.isEmpty()) null else skipped.take(3).joinToString("；"))
             if (!success) {
                 fail(task, "Unable to create preprocessing artifact")
                 return

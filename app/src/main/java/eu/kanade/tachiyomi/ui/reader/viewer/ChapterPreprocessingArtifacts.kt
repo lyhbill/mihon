@@ -108,6 +108,7 @@ object ChapterPreprocessingArtifacts {
         onPrepared: (pageCount: Int) -> Unit,
         onPageBuilt: (pageIndex: Int, pageCount: Int) -> Unit,
     ): Boolean {
+        pageFailures.clear()
         return try {
             if (chapterFile.isFile) {
                 buildArchive(context, chapterId, chapterFile, parallelism, onPrepared, onPageBuilt)
@@ -360,10 +361,15 @@ object ChapterPreprocessingArtifacts {
                 onPageBuilt = onPageBuilt,
             )
 
-            val masksComplete = outputCount(database, OUTPUT_KIND_MASK) == pageCount
-            val upscaledComplete = upscaleFactor == 0 ||
-                outputCount(database, OUTPUT_KIND_UPSCALED) == pageCount
-            if (!masksComplete || !upscaledComplete) return false
+            // A few undecodable pages must not throw away the whole chapter.
+            val builtMasks = outputCount(database, OUTPUT_KIND_MASK)
+            val builtUpscaled = outputCount(database, OUTPUT_KIND_UPSCALED)
+            val builtPages = if (upscaleFactor > 0) builtUpscaled else builtMasks
+            if (builtPages <= 0) return false
+            pageFailures = pageFailures.sorted()
+            if (builtPages < pageCount) {
+                putMetadata(database, KEY_PARTIAL, (pageCount - builtPages).toString())
+            }
             putMetadata(database, KEY_COMPLETE, VALUE_TRUE)
             artifactIndex.remove(chapterId)
             return true
@@ -416,8 +422,16 @@ object ChapterPreprocessingArtifacts {
         val workers = List(workerCount) {
             launch(Dispatchers.Default) {
                 for (page in pageSources) {
-                    val decoded = TextEnhancementMaskProcessor.decodePage(page.source)
-                        ?: error("Unable to decode chapter page ${page.index}")
+                    val decoded = try {
+                        TextEnhancementMaskProcessor.decodePage(page.source)
+                    } catch (error: Throwable) {
+                        null
+                    }
+                    if (decoded == null) {
+                        recordPageFailure(page.index, "无法识别图片格式")
+                        page.source.close()
+                        continue
+                    }
                     val mode = context.appGraph.readerPreferences.enhancementMode.get()
                     val onlyLowRes = context.appGraph.readerPreferences.enhanceOnlyLowRes.get()
                     val lowRes = minOf(decoded.width, decoded.height) < LOW_RES_THRESHOLD
@@ -434,10 +448,15 @@ object ChapterPreprocessingArtifacts {
                     }
                     val base = upscaled ?: decoded
                     try {
-                        val mask = TextEnhancementMaskProcessor.createArtifactMaskFromBitmap(context, base)
-                            ?: error("Unable to build chapter page ${page.index}")
+                        val mask = runCatching {
+                            TextEnhancementMaskProcessor.createArtifactMaskFromBitmap(context, base)
+                        }.getOrNull()
                         val jpeg = upscaled?.let(::encodeUpscaledPage)
-                        pageOutputs.send(PageOutput(page.index, compressPayload(mask), jpeg))
+                        if (mask == null && jpeg == null) {
+                            recordPageFailure(page.index, "页面处理失败")
+                        } else {
+                            pageOutputs.send(PageOutput(page.index, mask?.let(::compressPayload), jpeg))
+                        }
                     } finally {
                         upscaled?.recycle()
                         decoded.recycle()
@@ -618,6 +637,14 @@ object ChapterPreprocessingArtifacts {
     private data class ArtifactStamp(val length: Long, val lastModified: Long, val complete: Boolean)
 
     internal const val DATABASE_SCHEMA = 2
+
+    private val pageFailures = java.util.Collections.synchronizedList(mutableListOf<String>()) 
+
+    val lastPageFailures: List<String> get() = pageFailures.toList()
+
+    private fun recordPageFailure(index: Int, reason: String) {
+        pageFailures.add("第 " + (index + 1) + " 页：" + reason)
+    }
     internal const val ARTIFACT_EXTENSION = "ppc"
     internal const val MIN_PARALLELISM = 1
     internal const val MAX_PARALLELISM = 8
@@ -629,6 +656,7 @@ object ChapterPreprocessingArtifacts {
     private const val OUTPUT_KIND_UPSCALED = "upscaled-page"
     private const val KEY_SCHEMA = "schema"
     private const val KEY_UPSCALE_FACTOR = "upscale_factor"
+    private const val KEY_PARTIAL = "partial_pages"
     private const val KEY_CHAPTER_ID = "chapter"
     private const val KEY_ALGORITHM = "algorithm"
     private const val KEY_PAGE_COUNT = "pages"
