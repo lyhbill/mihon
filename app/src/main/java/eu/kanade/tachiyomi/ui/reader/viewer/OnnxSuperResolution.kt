@@ -56,7 +56,15 @@ object OnnxSuperResolution {
         }
         val input = prepared ?: source
         return try {
-            runTiles(active, input, factor)
+            val started = System.currentTimeMillis()
+            val result = runTiles(active, input, factor)
+            logcat(LogPriority.INFO) {
+                "SuperResolution ok: tile=" + active.tile +
+                    " type=" + active.inputType +
+                    " out=" + result.width + "x" + result.height +
+                    " ms=" + (System.currentTimeMillis() - started)
+            }
+            result
         } catch (error: Throwable) {
             logcat(LogPriority.ERROR, error) { "Super resolution inference failed" }
             null

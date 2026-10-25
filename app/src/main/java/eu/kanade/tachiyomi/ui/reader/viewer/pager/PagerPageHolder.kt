@@ -237,6 +237,10 @@ class PagerPageHolder(
                 )
                 val upscaled = image.upscaled
                 if (upscaled != null) {
+                    logcat(LogPriority.INFO) {
+                        "Reader showing upscaled page " + page.index +
+                            " (" + upscaled.width + "x" + upscaled.height + ")"
+                    }
                     setImage(BitmapDrawable(context.resources, upscaled), config)
                 } else {
                     setImage(image.source, image.isAnimated, config)
