@@ -560,7 +560,6 @@ class ReaderActivity : BaseActivity() {
 
             readingMode = readingMode,
             onClickReadingMode = viewModel::openReadingModeSelectDialog,
-            isRtl = readingMode == ReadingMode.RIGHT_TO_LEFT,
             onClickDirection = {
                 viewModel.setMangaReadingMode(
                     if (readingMode == ReadingMode.RIGHT_TO_LEFT) {

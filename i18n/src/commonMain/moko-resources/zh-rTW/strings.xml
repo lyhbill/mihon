@@ -166,6 +166,7 @@
     <string name="pref_viewer_type">預設閱讀模式</string>
     <string name="left_to_right_viewer">單頁(左至右)</string>
     <string name="right_to_left_viewer">單頁(右至左)</string>
+    <string name="reader_switch_direction">切換閱讀方向</string>
     <string name="vertical_viewer">單頁(上至下)</string>
     <string name="webtoon_viewer">捲動(連續)</string>
     <string name="pager_viewer">單頁</string>

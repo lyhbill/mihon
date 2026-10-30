@@ -115,6 +115,7 @@
     <string name="pref_viewer_type">默认阅读模式</string>
     <string name="left_to_right_viewer">单页式（从左到右）</string>
     <string name="right_to_left_viewer">单页式（从右到左）</string>
+    <string name="reader_switch_direction">切换阅读方向</string>
     <string name="vertical_viewer">单页式（从上到下）</string>
     <string name="webtoon_viewer">条漫</string>
     <string name="pager_viewer">单页式</string>

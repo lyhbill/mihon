@@ -71,7 +71,6 @@ fun ReaderAppBars(
 
     readingMode: ReadingMode,
     onClickReadingMode: () -> Unit,
-    isRtl: Boolean,
     onClickDirection: () -> Unit,
     orientation: ReaderOrientation,
     onClickOrientation: () -> Unit,
@@ -179,7 +178,6 @@ fun ReaderAppBars(
                         .windowInsetsPadding(WindowInsets.navigationBars),
                     readingMode = readingMode,
                     onClickReadingMode = onClickReadingMode,
-                    isRtl = isRtl,
                     onClickDirection = onClickDirection,
                     orientation = orientation,
                     onClickOrientation = onClickOrientation,

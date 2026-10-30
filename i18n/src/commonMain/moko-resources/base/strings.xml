@@ -512,6 +512,7 @@
     <string name="nav_zone_right">Right</string>
     <string name="left_to_right_viewer">Paged (left to right)</string>
     <string name="right_to_left_viewer">Paged (right to left)</string>
+    <string name="reader_switch_direction">Switch reading direction</string>
     <string name="vertical_viewer">Paged (vertical)</string>
     <string name="webtoon_viewer">Long strip</string>
     <string name="vertical_plus_viewer">Long strip with gaps</string>
