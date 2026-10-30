@@ -19,6 +19,7 @@ enum class AppTheme(val titleRes: StringResource?) {
     YOTSUBA(MR.strings.theme_yotsuba),
     TOKYONIGHT(MR.strings.theme_tokyonight),
     MONOCHROME(MR.strings.theme_monochrome),
+    EINK(MR.strings.theme_eink),
 
     // Deprecated
     DARK_BLUE(null),

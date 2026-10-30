@@ -3,6 +3,9 @@ package eu.kanade.tachiyomi.ui.base.activity
 import android.content.Context
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.platform.WindowRecomposerPolicy
+import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import eu.kanade.tachiyomi.ui.base.delegate.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.base.delegate.SecureActivityDelegateImpl
 import eu.kanade.tachiyomi.ui.base.delegate.ThemingDelegate
@@ -15,7 +18,16 @@ open class BaseActivity :
     SecureActivityDelegate by SecureActivityDelegateImpl(),
     ThemingDelegate by ThemingDelegateImpl() {
 
+    @OptIn(InternalComposeUiApi::class)
     override fun attachBaseContext(newBase: Context) {
+        WindowRecomposerPolicy.setFactory { rootView ->
+            rootView.createLifecycleAwareWindowRecomposer(
+                coroutineContext = AppMotionDurationScale(
+                    context = rootView.context,
+                    reduceMotion = rootView.context.appGraph.uiPreferences.reduceMotion,
+                ),
+            )
+        }
         val uiPreferences = newBase.appGraph.uiPreferences
         super.attachBaseContext(newBase.prepareTabletUiContext(uiPreferences))
     }

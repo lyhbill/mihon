@@ -91,6 +91,11 @@ object SettingsAppearanceScreen : SearchableSettings {
                         true
                     },
                 ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.reduceMotion,
+                    title = stringResource(MR.strings.pref_reduce_motion),
+                    subtitle = stringResource(MR.strings.pref_reduce_motion_summary),
+                ),
             ),
         )
     }

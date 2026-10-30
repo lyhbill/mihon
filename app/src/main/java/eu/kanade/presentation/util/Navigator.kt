@@ -4,6 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -14,6 +18,7 @@ import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.core.stack.StackEvent
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.ScreenTransitionContent
+import eu.kanade.presentation.theme.LocalReduceMotion
 import soup.compose.material.motion.animation.materialSharedAxisX
 import soup.compose.material.motion.animation.rememberSlideDistance
 
@@ -41,13 +46,18 @@ fun DefaultNavigatorScreenTransition(
     modifier: Modifier = Modifier,
 ) {
     val slideDistance = rememberSlideDistance()
+    val reduceMotion = LocalReduceMotion.current
     ScreenTransition(
         navigator = navigator,
         transition = {
-            materialSharedAxisX(
-                forward = navigator.lastEvent != StackEvent.Pop,
-                slideDistance = slideDistance,
-            )
+            if (reduceMotion) {
+                fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+            } else {
+                materialSharedAxisX(
+                    forward = navigator.lastEvent != StackEvent.Pop,
+                    slideDistance = slideDistance,
+                )
+            }
         },
         modifier = modifier,
     )

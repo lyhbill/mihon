@@ -12,7 +12,7 @@ interface ThemingDelegate {
         fun getThemeResIds(appTheme: AppTheme, isAmoled: Boolean): List<Int> {
             return buildList(2) {
                 add(themeResources.getOrDefault(appTheme, R.style.Theme_Tachiyomi))
-                if (isAmoled) add(R.style.ThemeOverlay_Tachiyomi_Amoled)
+                if (isAmoled && appTheme != AppTheme.EINK) add(R.style.ThemeOverlay_Tachiyomi_Amoled)
             }
         }
     }
@@ -34,6 +34,7 @@ private val themeResources: Map<AppTheme, Int> = mapOf(
     AppTheme.LAVENDER to R.style.Theme_Tachiyomi_Lavender,
     AppTheme.MIDNIGHT_DUSK to R.style.Theme_Tachiyomi_MidnightDusk,
     AppTheme.MONOCHROME to R.style.Theme_Tachiyomi_Monochrome,
+    AppTheme.EINK to R.style.Theme_Tachiyomi_Monochrome,
     AppTheme.NORD to R.style.Theme_Tachiyomi_Nord,
     AppTheme.STRAWBERRY_DAIQUIRI to R.style.Theme_Tachiyomi_StrawberryDaiquiri,
     AppTheme.TAKO to R.style.Theme_Tachiyomi_Tako,

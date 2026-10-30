@@ -31,6 +31,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
+import eu.kanade.presentation.theme.LocalReduceMotion
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -74,6 +75,7 @@ object HomeScreen : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val reduceMotion = LocalReduceMotion.current
         TabNavigator(
             tab = LibraryTab,
             key = TabNavigatorKey,
@@ -113,10 +115,11 @@ object HomeScreen : Screen() {
                     AnimatedContent(
                         targetState = tabNavigator.current,
                         transitionSpec = {
+                            val durationMillis = if (reduceMotion) 0 else TabFadeDuration
                             materialFadeThroughIn(
                                 initialScale = 1f,
-                                durationMillis = TabFadeDuration,
-                            ) togetherWith materialFadeThroughOut(durationMillis = TabFadeDuration)
+                                durationMillis = durationMillis,
+                            ) togetherWith materialFadeThroughOut(durationMillis = durationMillis)
                         },
                         label = "tabContent",
                     ) {

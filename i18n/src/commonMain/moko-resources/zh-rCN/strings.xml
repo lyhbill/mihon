@@ -488,6 +488,8 @@
     <string name="about_dont_kill_my_app">部分厂商杀掉后台服务的现象比较严重，此网站提供了一些解决方法。</string>
     <string name="restore_miui_warning">如果关闭 MIUI 优化，备份与还原可能会出现问题。</string>
     <string name="pref_dark_theme_pure_black">纯黑深色模式</string>
+    <string name="pref_reduce_motion">减少动画</string>
+    <string name="pref_reduce_motion_summary">关闭 Material 与应用转场动画，更适合 E-Ink 阅读</string>
     <string name="theme_yotsuba">四叶草</string>
     <string name="theme_yinyang">阴阳</string>
     <string name="theme_tako">Tako</string>
@@ -795,6 +797,7 @@
     <string name="pref_incognito_mode_extension_summary">暂停记录插件的阅读历史</string>
     <string name="label_auto">自动</string>
     <string name="theme_monochrome">单色</string>
+    <string name="theme_eink">E-Ink 高对比</string>
     <string name="pref_mark_duplicate_read_chapter_read">将重复的已读章节都标记为已读</string>
     <string name="author">作者</string>
     <string name="action_toggle_private_off">公开记录</string>

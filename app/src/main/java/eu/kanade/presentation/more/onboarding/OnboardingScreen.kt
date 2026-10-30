@@ -15,6 +15,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import eu.kanade.presentation.theme.LocalReduceMotion
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.RocketLaunch
 import soup.compose.material.motion.animation.materialSharedAxisX
@@ -30,6 +31,7 @@ fun OnboardingScreen(
     onRestoreBackup: () -> Unit,
 ) {
     val slideDistance = rememberSlideDistance()
+    val reduceMotion = LocalReduceMotion.current
 
     var currentStep by rememberSaveable { mutableIntStateOf(0) }
     val steps = remember {
@@ -78,6 +80,7 @@ fun OnboardingScreen(
                 transitionSpec = {
                     materialSharedAxisX(
                         forward = targetState > initialState,
+                        durationMillis = if (reduceMotion) 0 else 300,
                         slideDistance = slideDistance,
                     )
                 },
