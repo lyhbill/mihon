@@ -502,6 +502,7 @@ class ReaderActivity : BaseActivity() {
         )
         val verticalNavigatorOnLeft by readerPreferences.verticalNavigatorOnLeft.collectAsState()
         val verticalNavigatorHeight by readerPreferences.verticalNavigatorHeight.collectAsState()
+        val readingMode = ReadingMode.fromPreference(viewModel.getMangaReadingMode())
 
         ReaderAppBars(
             visible = state.menuVisible,
@@ -544,10 +545,18 @@ class ReaderActivity : BaseActivity() {
                 isScrollingThroughPages = false
             },
 
-            readingMode = ReadingMode.fromPreference(
-                viewModel.getMangaReadingMode(resolveDefault = false),
-            ),
+            readingMode = readingMode,
             onClickReadingMode = viewModel::openReadingModeSelectDialog,
+            isRtl = readingMode == ReadingMode.RIGHT_TO_LEFT,
+            onClickDirection = {
+                viewModel.setMangaReadingMode(
+                    if (readingMode == ReadingMode.RIGHT_TO_LEFT) {
+                        ReadingMode.LEFT_TO_RIGHT
+                    } else {
+                        ReadingMode.RIGHT_TO_LEFT
+                    },
+                )
+            },
             orientation = ReaderOrientation.fromPreference(
                 viewModel.getMangaOrientation(resolveDefault = false),
             ),

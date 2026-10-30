@@ -12,6 +12,8 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import mihon.icons.custommaterialsymbols.CustomMaterialSymbols
 import mihon.icons.custommaterialsymbols.rounded.CropOff
+import mihon.icons.custommaterialsymbols.rounded.ReaderLeftToRight
+import mihon.icons.custommaterialsymbols.rounded.ReaderRightToLeft
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Crop
 import mihon.icons.materialsymbols.rounded.Settings
@@ -22,6 +24,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 fun ReaderBottomBar(
     readingMode: ReadingMode,
     onClickReadingMode: () -> Unit,
+    isRtl: Boolean,
+    onClickDirection: () -> Unit,
     orientation: ReaderOrientation,
     onClickOrientation: () -> Unit,
     cropEnabled: Boolean,
@@ -40,6 +44,21 @@ fun ReaderBottomBar(
                 imageVector = readingMode.icon,
                 contentDescription = stringResource(MR.strings.viewer),
             )
+        }
+
+        if (readingMode.direction == ReadingMode.Direction.Horizontal) {
+            IconButton(onClick = onClickDirection) {
+                Icon(
+                    imageVector = if (isRtl) {
+                        CustomMaterialSymbols.Rounded.ReaderRightToLeft
+                    } else {
+                        CustomMaterialSymbols.Rounded.ReaderLeftToRight
+                    },
+                    contentDescription = stringResource(
+                        if (isRtl) MR.strings.right_to_left_viewer else MR.strings.left_to_right_viewer,
+                    ),
+                )
+            }
         }
 
         IconButton(onClick = onClickOrientation) {
