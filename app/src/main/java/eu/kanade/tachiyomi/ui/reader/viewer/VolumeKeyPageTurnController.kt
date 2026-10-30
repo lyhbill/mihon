@@ -13,15 +13,16 @@ private const val VOLUME_KEY_REPEAT_INTERVAL_MILLIS = 250L
 /**
  * Turns one page on a short volume-key press and keeps turning pages while it is held down.
  *
- * Key repeat events are not portable across devices (volume keys can be consumed by the system and
- * may not receive repeated [KeyEvent.ACTION_DOWN] events), so the repeat loop is driven by a
- * coroutine after the initial key-down event.
+ * Some devices deliver volume-key autorepeat as new [KeyEvent.ACTION_DOWN] events whose
+ * `repeatCount` stays at zero. A single pressed/released state is therefore tracked explicitly;
+ * that state starts the repeat loop only once for the whole physical press.
  */
 internal class VolumeKeyPageTurnController(
     private val scope: CoroutineScope,
     private val enabled: () -> Boolean,
 ) {
     private var repeatJob: Job? = null
+    private var isPressed = false
     private var turnedDuringPress = false
 
     /**
@@ -29,11 +30,14 @@ internal class VolumeKeyPageTurnController(
      * to the system so the volume keys keep their normal function.
      */
     fun handle(event: KeyEvent, turnPage: () -> Unit): Boolean {
-        if (!enabled()) return false
-
-        when (event.action) {
+        return when (event.action) {
             KeyEvent.ACTION_DOWN -> {
-                if (event.repeatCount == 0) {
+                if (!enabled()) {
+                    reset()
+                    return false
+                }
+                if (!isPressed) {
+                    isPressed = true
                     turnedDuringPress = false
                     repeatJob?.cancel()
                     repeatJob = scope.launch {
@@ -46,15 +50,24 @@ internal class VolumeKeyPageTurnController(
                         }
                     }
                 }
+                true
             }
             KeyEvent.ACTION_UP -> {
-                repeatJob?.cancel()
-                repeatJob = null
-                if (!turnedDuringPress) turnPage()
-                turnedDuringPress = false
+                val wasPressed = isPressed
+                val consume = wasPressed && enabled()
+                val shouldTurn = consume && !turnedDuringPress
+                reset()
+                if (shouldTurn) turnPage()
+                consume
             }
-            else -> return false
+            else -> false
         }
-        return true
+    }
+
+    private fun reset() {
+        repeatJob?.cancel()
+        repeatJob = null
+        isPressed = false
+        turnedDuringPress = false
     }
 }
