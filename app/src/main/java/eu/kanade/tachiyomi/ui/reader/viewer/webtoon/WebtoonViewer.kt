@@ -316,14 +316,14 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
                     return false
-                } else if (isUp) {
+                } else if (isUp || (event.repeatCount > 0 && event.repeatCount % 4 == 0)) {
                     if (!config.volumeKeysInverted) scrollDown() else scrollUp()
                 }
             }
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
                     return false
-                } else if (isUp) {
+                } else if (isUp || (event.repeatCount > 0 && event.repeatCount % 4 == 0)) {
                     if (!config.volumeKeysInverted) scrollUp() else scrollDown()
                 }
             }

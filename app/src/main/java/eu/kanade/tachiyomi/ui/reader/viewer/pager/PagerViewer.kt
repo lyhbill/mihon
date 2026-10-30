@@ -533,14 +533,14 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
                     return false
-                } else if (isUp) {
+                } else if (isUp || (event.repeatCount > 0 && event.repeatCount % 4 == 0)) {
                     if (!config.volumeKeysInverted) moveDown() else moveUp()
                 }
             }
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
                     return false
-                } else if (isUp) {
+                } else if (isUp || (event.repeatCount > 0 && event.repeatCount % 4 == 0)) {
                     if (!config.volumeKeysInverted) moveUp() else moveDown()
                 }
             }
