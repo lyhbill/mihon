@@ -21,7 +21,6 @@ import eu.kanade.tachiyomi.ui.reader.viewer.PageCropState
 import eu.kanade.tachiyomi.ui.reader.viewer.PagePanDirection
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation.NavigationRegion
-import eu.kanade.tachiyomi.ui.reader.viewer.VolumeKeyPageTurnController
 import eu.kanade.tachiyomi.util.system.SmartOsPageTurnEffect
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -53,10 +52,6 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
      * Configuration used by the pager, like allow taps, scale mode on images, page transitions...
      */
     val config = PagerConfig(this, scope, readerPreferences)
-
-    private val volumeKeyPageTurner = VolumeKeyPageTurnController(scope) {
-        config.volumeKeysEnabled && !activity.viewModel.state.value.menuVisible
-    }
 
     private val useSmartOsWaterRipple: Boolean
         get() = readerPreferences.pageTransitions.get() &&
@@ -536,16 +531,18 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
 
         when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                val handled = volumeKeyPageTurner.handle(event) {
+                if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
+                    return false
+                } else if (isUp) {
                     if (!config.volumeKeysInverted) moveDown() else moveUp()
                 }
-                if (!handled) return false
             }
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                val handled = volumeKeyPageTurner.handle(event) {
+                if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
+                    return false
+                } else if (isUp) {
                     if (!config.volumeKeysInverted) moveUp() else moveDown()
                 }
-                if (!handled) return false
             }
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
                 if (isUp) {

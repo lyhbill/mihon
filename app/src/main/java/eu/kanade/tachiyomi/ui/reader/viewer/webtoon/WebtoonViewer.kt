@@ -18,7 +18,6 @@ import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation.NavigationRegion
-import eu.kanade.tachiyomi.ui.reader.viewer.VolumeKeyPageTurnController
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import mihon.app.di.appGraph
@@ -61,10 +60,6 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
      * Configuration used by this viewer, like allow taps, or crop image borders.
      */
     val config = WebtoonConfig(scope, readerPreferences)
-
-    private val volumeKeyPageTurner = VolumeKeyPageTurnController(scope) {
-        config.volumeKeysEnabled && !activity.viewModel.state.value.menuVisible
-    }
 
     /**
      * Adapter of the recycler view.
@@ -319,16 +314,18 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
 
         when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                val handled = volumeKeyPageTurner.handle(event) {
+                if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
+                    return false
+                } else if (isUp) {
                     if (!config.volumeKeysInverted) scrollDown() else scrollUp()
                 }
-                if (!handled) return false
             }
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                val handled = volumeKeyPageTurner.handle(event) {
+                if (!config.volumeKeysEnabled || activity.viewModel.state.value.menuVisible) {
+                    return false
+                } else if (isUp) {
                     if (!config.volumeKeysInverted) scrollUp() else scrollDown()
                 }
-                if (!handled) return false
             }
             KeyEvent.KEYCODE_MENU -> if (isUp) activity.toggleMenu()
 
